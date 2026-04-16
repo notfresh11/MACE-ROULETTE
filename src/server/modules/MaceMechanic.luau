@@ -51,7 +51,9 @@ local function getHitTrack(animator, animId)
     if not loadedHitAnims[animator][animId] then
         local anim = Instance.new("Animation")
         anim.AnimationId = animId
-        loadedHitAnims[animator][animId] = animator:LoadAnimation(anim)
+        local track = animator:LoadAnimation(anim)
+        track.Looped = false
+        loadedHitAnims[animator][animId] = track
     end
     return loadedHitAnims[animator][animId]
 end
@@ -693,7 +695,16 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
                         local animator = humanoid:FindFirstChild("Animator")
                         if animator then
                             local track = getHitTrack(animator, maceHitAnimId)
+                            if track.IsPlaying then
+                                track:Stop()
+                            end
                             track:Play()
+                            -- Prevent indefinite looping or overlap
+                            task.delay(1, function()
+                                if track and track.IsPlaying then
+                                    track:Stop(0.2)
+                                end
+                            end)
                         end
 
                         -- Hit Pause! Înghețăm temporar atacatorul în aer pt 0.08 secunde
@@ -797,7 +808,16 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
                         local animator = humanoid:FindFirstChildWhichIsA("Animator")
                         if animator then
                             local track = getHitTrack(animator, maceHitAnimId)
+                            if track.IsPlaying then
+                                track:Stop()
+                            end
                             track:Play()
+                            -- Prevent indefinite looping or overlap
+                            task.delay(1, function()
+                                if track and track.IsPlaying then
+                                    track:Stop(0.2)
+                                end
+                            end)
                         end
 
                         rootPart.Anchored = true
