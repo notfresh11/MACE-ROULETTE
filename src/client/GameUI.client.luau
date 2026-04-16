@@ -1,7 +1,19 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
+
+-- Disable Default Hotbar
+task.spawn(function()
+    local success, err
+    repeat
+        success, err = pcall(function()
+            StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+        end)
+        if not success then task.wait(0.1) end
+    until success
+end)
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Creează UI-ul
@@ -186,90 +198,507 @@ local function setupUI()
         applyDynamicUIScale(settingsGui)
     end
 
-    -- PROGRESSION UI SETUP
-    local levelFrame = mainUI:FindFirstChild("Level")
-    if levelFrame then
-        local innerFrame = levelFrame:FindFirstChild("Frame")
-        if innerFrame then
-            local avatarHolder = innerFrame:FindFirstChild("Avatar")
-            local levelTotal = innerFrame:FindFirstChild("LevelTotal")
-            local levelDone = innerFrame:FindFirstChild("LevelDone")
-            local xpProgress = innerFrame:FindFirstChild("XPProgress")
-            local lvlProgress = innerFrame:FindFirstChild("LVLProgress")
+    local abilityRequestEvent = ReplicatedStorage:WaitForChild("AbilityRequestEvent", 5)
+    local abilityStateEvent = ReplicatedStorage:WaitForChild("AbilityStateEvent", 5)
 
-            -- Setup Avatar Image
-            if avatarHolder and avatarHolder:IsA("Frame") then
-                local imgAvatar = Instance.new("ImageLabel")
-                imgAvatar.Name = "Avatar"
-                imgAvatar.Size = avatarHolder.Size
-                imgAvatar.Position = avatarHolder.Position
-                imgAvatar.AnchorPoint = avatarHolder.AnchorPoint
-                imgAvatar.BackgroundTransparency = 1
+    -- Ability Slot Tracking
+    local function setupAbilitySlot()
+        local inGameGui = playerGui:FindFirstChild("INGAME")
+        if not inGameGui then return end
+        local matchGui = inGameGui:FindFirstChild("MATCH")
+        if not matchGui then return end
+        local hotbarGui = matchGui:FindFirstChild("Hotbar")
+        if not hotbarGui then return end
 
-                -- Attempt to get thumbnail
-                task.spawn(function()
-                    local success, thumb, ready = pcall(function()
-                        return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
-                    end)
-                    if success and ready then
-                        imgAvatar.Image = thumb
+        local abilitySlot = hotbarGui:FindFirstChild("AbilitySlot")
+        if not abilitySlot then return end
+
+        -- Get references to visual components
+        local abilityImage = abilitySlot:FindFirstChild("AbilityImage")
+        if not abilityImage then
+            -- Fallback
+            abilityImage = Instance.new("ImageLabel")
+            abilityImage.Name = "AbilityImage"
+            abilityImage.Size = UDim2.new(1, 0, 1, 0)
+            abilityImage.BackgroundTransparency = 1
+            abilityImage.Parent = abilitySlot
+        end
+
+        local abilityText = abilitySlot:FindFirstChild("AbilityText")
+
+        -- Create Cooldown Overlay
+        local cooldownOverlay = abilitySlot:FindFirstChild("CooldownOverlay")
+        if not cooldownOverlay then
+            cooldownOverlay = Instance.new("Frame")
+            cooldownOverlay.Name = "CooldownOverlay"
+            cooldownOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+            cooldownOverlay.BackgroundTransparency = 0.5
+            cooldownOverlay.BorderSizePixel = 0
+            cooldownOverlay.AnchorPoint = Vector2.new(0, 1) -- Bottom left anchor
+            cooldownOverlay.Position = UDim2.new(0, 0, 1, 0) -- Starts at bottom
+            cooldownOverlay.Size = UDim2.new(1, 0, 0, 0) -- Starts empty
+            cooldownOverlay.ZIndex = 10
+            cooldownOverlay.Parent = abilitySlot
+        end
+
+        -- Need to track local equipped state to know the cooldown duration
+        local currentEquipped = nil
+        local cachedAbilitiesDef = nil
+
+        -- Listen for ability updates
+        if abilityStateEvent then
+            table.insert(activeConnections, abilityStateEvent.OnClientEvent:Connect(function(ownedAbilities, equippedAbility, abilitiesDef)
+                if ownedAbilities == "ResetCooldowns" then
+                    -- Reset local cooldown UI
+                    TweenService:Create(cooldownOverlay, TweenInfo.new(0.1), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+                    return
+                end
+
+                if type(ownedAbilities) == "table" then
+                    currentEquipped = equippedAbility
+                    cachedAbilitiesDef = abilitiesDef
+                end
+
+                if equippedAbility and abilitiesDef and abilitiesDef[equippedAbility] then
+                    local def = abilitiesDef[equippedAbility]
+                    -- Icons are placed in ReplicatedStorage by server script if we move them, but the user said ServerStorage.
+                    -- The client cannot read ServerStorage.
+                    -- We must assume the server will replicate them or we fallback to Text.
+                    local iconFolder = ReplicatedStorage:FindFirstChild("AbilityIcon")
+                    local iconObj = iconFolder and iconFolder:FindFirstChild(equippedAbility)
+
+                    if iconObj and iconObj:IsA("ImageLabel") then
+                        abilityImage.Image = iconObj.Image
+                        abilityImage.Visible = true
+                        if abilityText then abilityText.Visible = false end
+                    elseif iconObj and iconObj:IsA("Texture") then
+                        abilityImage.Image = iconObj.Texture
+                        abilityImage.Visible = true
+                        if abilityText then abilityText.Visible = false end
+                    else
+                        -- Fallback to Text
+                        abilityImage.Visible = false
+                        if not abilityText then
+                            abilityText = Instance.new("TextLabel")
+                            abilityText.Name = "AbilityText"
+                            abilityText.Size = UDim2.new(1, 0, 1, 0)
+                            abilityText.BackgroundTransparency = 1
+                            abilityText.TextScaled = true
+                            abilityText.TextColor3 = Color3.new(1, 1, 1)
+                            abilityText.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
+                            abilityText.Parent = abilitySlot
+                        end
+                        abilityText.Text = def.Name
+                        abilityText.Visible = true
                     end
-                end)
+                else
+                    abilityImage.Visible = false
+                    if abilityText then abilityText.Visible = false end
+                end
+            end))
+        end
 
-                imgAvatar.Parent = innerFrame
-                avatarHolder:Destroy()
-            elseif avatarHolder and avatarHolder:IsA("ImageLabel") then
-                -- Already converted, just update image
-                task.spawn(function()
-                    local success, thumb, ready = pcall(function()
-                        return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
-                    end)
-                    if success and ready then
-                        avatarHolder.Image = thumb
+        -- Track Ability Usage to trigger cooldown UI locally
+        local abilityUseEvent = ReplicatedStorage:WaitForChild("AbilityUseEvent", 5)
+        local UserInputService = game:GetService("UserInputService")
+
+        if abilityUseEvent then
+            table.insert(activeConnections, UserInputService.InputBegan:Connect(function(input, gpe)
+                if gpe then return end
+                if input.KeyCode == Enum.KeyCode.Q then
+                    -- Trigger visual cooldown if we have an ability equipped
+                    if currentEquipped and cachedAbilitiesDef and cachedAbilitiesDef[currentEquipped] then
+                        local cd = cachedAbilitiesDef[currentEquipped].Cooldown or 10
+
+                        -- Only start visual CD if it's currently at 0 (approx)
+                        if cooldownOverlay.Size.Y.Scale <= 0.01 then
+                            -- Instantly fill
+                            cooldownOverlay.Size = UDim2.new(1, 0, 1, 0)
+                            -- Tween down over CD duration
+                            TweenService:Create(cooldownOverlay, TweenInfo.new(cd, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+                        end
                     end
-                end)
+                end
+            end))
+        end
+    end
+
+    setupAbilitySlot()
+
+    -- Ascultăm UpdateStatsEvent
+    local updateStatsEvent = ReplicatedStorage:WaitForChild("UpdateStatsEvent", 5)
+
+    -- Health Bar Logic
+    local function updateHealthUI()
+        local inGameGui = playerGui:FindFirstChild("INGAME")
+        if not inGameGui then return end
+        local matchGui = inGameGui:FindFirstChild("MATCH")
+        if not matchGui then return end
+        local hotbarGui = matchGui:FindFirstChild("Hotbar")
+        if not hotbarGui then return end
+        local healthBarContainer = hotbarGui:FindFirstChild("HealthBar")
+        if not healthBarContainer then return end
+
+        local healthRemained = healthBarContainer:FindFirstChild("HealthRemained")
+        local healthText = healthBarContainer:FindFirstChild("Health")
+
+        local char = player.Character
+        if char then
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                local currentHealth = humanoid.Health
+                local maxHealth = humanoid.MaxHealth
+
+                if healthText then
+                    healthText.Text = tostring(math.floor(currentHealth)) .. "/" .. tostring(math.floor(maxHealth))
+                end
+
+                if healthRemained and maxHealth > 0 then
+                    local ratio = math.clamp(currentHealth / maxHealth, 0, 1)
+                    local targetSize = UDim2.new(ratio, 0, healthRemained.Size.Y.Scale, healthRemained.Size.Y.Offset)
+                    TweenService:Create(healthRemained, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = targetSize}):Play()
+                end
+            end
+        end
+    end
+
+    -- Hook up character added for Health Tracking
+    local function setupHealthTracking(character)
+        local humanoid = character:WaitForChild("Humanoid", 5)
+        if humanoid then
+            -- initial update
+            updateHealthUI()
+
+            table.insert(activeConnections, humanoid.HealthChanged:Connect(function()
+                updateHealthUI()
+            end))
+            table.insert(activeConnections, humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(function()
+                updateHealthUI()
+            end))
+        end
+    end
+
+    if player.Character then
+        setupHealthTracking(player.Character)
+    end
+    table.insert(activeConnections, player.CharacterAdded:Connect(setupHealthTracking))
+
+    -- Custom Inventory Logic (Slots 1, 2, 3)
+    local function setupInventoryTracking()
+        local UserInputService = game:GetService("UserInputService")
+        local inGameGui = playerGui:FindFirstChild("INGAME")
+        if not inGameGui then return end
+        local matchGui = inGameGui:FindFirstChild("MATCH")
+        if not matchGui then return end
+        local hotbarGui = matchGui:FindFirstChild("Hotbar")
+        if not hotbarGui then return end
+
+        local slots = {
+            hotbarGui:FindFirstChild("Slot1"),
+            hotbarGui:FindFirstChild("Slot2"),
+            hotbarGui:FindFirstChild("Slot3")
+        }
+
+        local currentTools = {} -- [slotIndex] = tool instance
+
+        local function updateSlotUI(slotIndex, tool)
+            local slotGui = slots[slotIndex]
+            if not slotGui then return end
+
+            local itemLabel = slotGui:FindFirstChild("ItemName") -- If user has a label for name
+            local itemIcon = slotGui:FindFirstChild("ItemIcon") -- Assuming an ImageLabel exists
+
+            -- Dacă nu le găsim, încercăm să găsim orice ImageLabel sau TextLabel în interior (conform instrucțiunilor de text fallback)
+            if not itemIcon then
+                for _, child in ipairs(slotGui:GetChildren()) do
+                    if child:IsA("ImageLabel") and child.Name ~= "HotbarSlot" then
+                        itemIcon = child
+                        break
+                    end
+                end
             end
 
-            -- Setup initial bar colors
-            if levelTotal then levelTotal.BackgroundColor3 = Color3.new(1, 1, 1) end -- Alb
-            if levelDone then levelDone.BackgroundColor3 = Color3.new(1, 0, 0) end -- Rosu
+            if not itemLabel then
+                for _, child in ipairs(slotGui:GetChildren()) do
+                    if child:IsA("TextLabel") then
+                        itemLabel = child
+                        break
+                    end
+                end
+            end
 
-            -- Ascultăm UpdateStatsEvent
-            local updateStatsEvent = ReplicatedStorage:WaitForChild("UpdateStatsEvent", 5)
-            local abilityRequestEvent = ReplicatedStorage:WaitForChild("AbilityRequestEvent", 5)
-            local abilityStateEvent = ReplicatedStorage:WaitForChild("AbilityStateEvent", 5)
+            if tool then
+                -- Try to find Icon image
+                local iconImage = tool:FindFirstChild("Icon")
+                if iconImage and iconImage:IsA("ImageLabel") and itemIcon then
+                    itemIcon.Image = iconImage.Image
+                    itemIcon.Visible = true
+                    if itemLabel then itemLabel.Visible = false end
+                elseif tool.TextureId and tool.TextureId ~= "" and itemIcon then
+                    itemIcon.Image = tool.TextureId
+                    itemIcon.Visible = true
+                    if itemLabel then itemLabel.Visible = false end
+                else
+                    if itemIcon then itemIcon.Visible = false end
+                    if not itemLabel then
+                        -- Create fallback TextLabel
+                        itemLabel = Instance.new("TextLabel")
+                        itemLabel.Name = "FallbackText"
+                        itemLabel.Size = UDim2.new(1, 0, 1, 0)
+                        itemLabel.BackgroundTransparency = 1
+                        itemLabel.TextScaled = true
+                        itemLabel.TextColor3 = Color3.new(1, 1, 1)
+                        itemLabel.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
+                        itemLabel.Parent = slotGui
+                    end
+                    itemLabel.Text = tool.Name
+                    itemLabel.Visible = true
+                end
+            else
+                -- Clear slot
+                if itemIcon then itemIcon.Visible = false end
+                if itemLabel then itemLabel.Visible = false end
+            end
+        end
 
-            if updateStatsEvent then
-                table.insert(activeConnections, updateStatsEvent.OnClientEvent:Connect(function(level, currentXp, requiredXp, coins)
-                    -- Update XP Texts
-                    if lvlProgress then lvlProgress.Text = "LVL " .. tostring(level) end
-                    if xpProgress then xpProgress.Text = tostring(math.floor(currentXp)) .. "/" .. tostring(math.floor(requiredXp)) end
-
-                    -- Update Bar Size (assuming left anchored, so we tween X Scale)
-                    if levelDone and levelTotal then
-                        local ratio = math.clamp(currentXp / requiredXp, 0, 1)
-                        -- Putem folosi tween pt un efect smooth
-                        local targetSize = UDim2.new(ratio, 0, levelDone.Size.Y.Scale, levelDone.Size.Y.Offset)
-                        TweenService:Create(levelDone, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = targetSize}):Play()
+        local function highlightSlot(slotIndex)
+            -- Vrem sa manipulam marimea. Presupunem marimea default (ce e salvat initial in designer).
+            -- Ca fallback scriem un size comun.
+            for i, slotGui in ipairs(slots) do
+                if slotGui then
+                    if not slotGui:GetAttribute("OrigSizeXScale") then
+                        slotGui:SetAttribute("OrigSizeXScale", slotGui.Size.X.Scale)
+                        slotGui:SetAttribute("OrigSizeXOffset", slotGui.Size.X.Offset)
+                        slotGui:SetAttribute("OrigSizeYScale", slotGui.Size.Y.Scale)
+                        slotGui:SetAttribute("OrigSizeYOffset", slotGui.Size.Y.Offset)
                     end
 
-                    -- Update Shop Coins Button
-                    local shopGuiRef = playerGui:FindFirstChild("Shop")
-                    if shopGuiRef then
-                        local shopMainFrame = shopGuiRef:FindFirstChild("MainFrame")
-                        if shopMainFrame then
-                            local coinsBtn = shopMainFrame:FindFirstChild("CoinsButton")
-                            if coinsBtn then
-                                local coinsText = coinsBtn:FindFirstChild("TextLabel")
-                                if coinsText then
-                                    coinsText.Text = tostring(math.floor(coins))
-                                end
+                    local origSize = UDim2.new(
+                        slotGui:GetAttribute("OrigSizeXScale"), slotGui:GetAttribute("OrigSizeXOffset"),
+                        slotGui:GetAttribute("OrigSizeYScale"), slotGui:GetAttribute("OrigSizeYOffset")
+                    )
+
+                    if i == slotIndex then
+                        -- Animatie select (marire)
+                        local targetSize = UDim2.new(
+                            origSize.X.Scale * 1.15, origSize.X.Offset * 1.15,
+                            origSize.Y.Scale * 1.15, origSize.Y.Offset * 1.15
+                        )
+                        TweenService:Create(slotGui, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = targetSize}):Play()
+                    else
+                        -- Animatie deselect (revenire)
+                        TweenService:Create(slotGui, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = origSize}):Play()
+                    end
+                end
+            end
+        end
+
+        local function getPlayerTools()
+            local tools = {}
+            local backpack = player:FindFirstChild("Backpack")
+            if backpack then
+                for _, item in ipairs(backpack:GetChildren()) do
+                    if item:IsA("Tool") then
+                        table.insert(tools, item)
+                    end
+                end
+            end
+            local char = player.Character
+            if char then
+                for _, item in ipairs(char:GetChildren()) do
+                    if item:IsA("Tool") then
+                        table.insert(tools, item)
+                    end
+                end
+            end
+            return tools
+        end
+
+        local function refreshInventory()
+            local allTools = getPlayerTools()
+
+            -- Keep a set of tools currently present
+            local presentTools = {}
+            for _, t in ipairs(allTools) do
+                presentTools[t] = true
+            end
+
+            -- Remove tools from slots if they no longer exist
+            for i = 1, 3 do
+                if currentTools[i] and not presentTools[currentTools[i]] then
+                    currentTools[i] = nil
+                end
+            end
+
+            -- Pin Mace to Slot 1
+            for _, tool in ipairs(allTools) do
+                if tool.Name:lower() == "mace" and currentTools[1] ~= tool then
+                    -- If Mace wasn't in slot 1, put it there
+                    if currentTools[1] then
+                        -- Move whatever was in 1 to another slot if possible
+                        for j = 2, 3 do
+                            if not currentTools[j] then
+                                currentTools[j] = currentTools[1]
+                                break
                             end
                         end
                     end
+                    currentTools[1] = tool
+                end
+            end
+
+            -- Fill empty slots with new tools
+            for _, tool in ipairs(allTools) do
+                if tool.Name:lower() ~= "mace" then
+                    local alreadyInSlot = false
+                    for i = 1, 3 do
+                        if currentTools[i] == tool then
+                            alreadyInSlot = true
+                            break
+                        end
+                    end
+                    if not alreadyInSlot then
+                        for i = 2, 3 do
+                            if not currentTools[i] then
+                                currentTools[i] = tool
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Update UI
+            for i = 1, 3 do
+                updateSlotUI(i, currentTools[i])
+            end
+
+            -- Highlight current equipped
+            local char = player.Character
+            local equippedSlot = nil
+            if char then
+                for i = 1, 3 do
+                    if currentTools[i] and currentTools[i].Parent == char then
+                        equippedSlot = i
+                        break
+                    end
+                end
+            end
+            highlightSlot(equippedSlot)
+        end
+
+        local inventoryConnections = {}
+
+        local function hookInventory(character)
+            -- Clean old connections
+            for _, c in ipairs(inventoryConnections) do c:Disconnect() end
+            inventoryConnections = {}
+
+            local backpack = player:WaitForChild("Backpack", 5)
+            if backpack then
+                table.insert(inventoryConnections, backpack.ChildAdded:Connect(refreshInventory))
+                table.insert(inventoryConnections, backpack.ChildRemoved:Connect(refreshInventory))
+            end
+
+            if character then
+                table.insert(inventoryConnections, character.ChildAdded:Connect(function(child)
+                    if child:IsA("Tool") then refreshInventory() end
+                end))
+                table.insert(inventoryConnections, character.ChildRemoved:Connect(function(child)
+                    if child:IsA("Tool") then refreshInventory() end
                 end))
             end
+
+            -- Initial refresh
+            refreshInventory()
         end
+
+        if player.Character then hookInventory(player.Character) end
+        table.insert(activeConnections, player.CharacterAdded:Connect(hookInventory))
+
+        -- Make sure we cleanup local inventory connections on full script reset
+        table.insert(activeConnections, {
+            Disconnect = function()
+                for _, c in ipairs(inventoryConnections) do c:Disconnect() end
+            end
+        })
+
+        -- Keybindings
+        table.insert(activeConnections, UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
+
+            local slotToEquip = nil
+            if input.KeyCode == Enum.KeyCode.One then slotToEquip = 1
+            elseif input.KeyCode == Enum.KeyCode.Two then slotToEquip = 2
+            elseif input.KeyCode == Enum.KeyCode.Three then slotToEquip = 3
+            end
+
+            if slotToEquip and currentTools[slotToEquip] then
+                local tool = currentTools[slotToEquip]
+                local char = player.Character
+                local human = char and char:FindFirstChild("Humanoid")
+                if human then
+                    if tool.Parent == char then
+                        -- Unequip
+                        human:UnequipTools()
+                        highlightSlot(nil)
+                    else
+                        -- Equip
+                        human:EquipTool(tool)
+                        highlightSlot(slotToEquip)
+                    end
+                end
+            end
+        end))
+
+        refreshInventory()
+    end
+
+    setupInventoryTracking()
+
+    if updateStatsEvent then
+        table.insert(activeConnections, updateStatsEvent.OnClientEvent:Connect(function(level, currentXp, requiredXp, coins)
+            -- Noul sistem XP
+            local inGameGui = playerGui:FindFirstChild("INGAME")
+            if inGameGui then
+                local matchGui = inGameGui:FindFirstChild("MATCH")
+                if matchGui then
+                    local hotbarGui = matchGui:FindFirstChild("Hotbar")
+                    if hotbarGui then
+                        local xpContainer = hotbarGui:FindFirstChild("XP")
+                        if xpContainer then
+                            local xpDone = xpContainer:FindFirstChild("XPDONE")
+                            local lvlProgress = xpContainer:FindFirstChild("LVLProgress")
+                            local xpProgress = xpContainer:FindFirstChild("XPProgress")
+
+                            if lvlProgress then lvlProgress.Text = "LVL " .. tostring(level) end
+                            if xpProgress then xpProgress.Text = tostring(math.floor(currentXp)) .. "/" .. tostring(math.floor(requiredXp)) end
+
+                            if xpDone then
+                                local ratio = math.clamp(currentXp / requiredXp, 0, 1)
+                                local targetSize = UDim2.new(ratio, 0, xpDone.Size.Y.Scale, xpDone.Size.Y.Offset)
+                                TweenService:Create(xpDone, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = targetSize}):Play()
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Update Shop Coins Button
+            local shopGuiRef = playerGui:FindFirstChild("Shop")
+            if shopGuiRef then
+                local shopMainFrame = shopGuiRef:FindFirstChild("MainFrame")
+                if shopMainFrame then
+                    local coinsBtn = shopMainFrame:FindFirstChild("CoinsButton")
+                    if coinsBtn then
+                        local coinsText = coinsBtn:FindFirstChild("TextLabel")
+                        if coinsText then
+                            coinsText.Text = tostring(math.floor(coins))
+                        end
+                    end
+                end
+            end
+        end))
     end
     if shopGui then shopGui.Enabled = true end
     if settingsGui then settingsGui.Enabled = true end

@@ -1,0 +1,22 @@
+<<<<<<< SEARCH
+local dashVelocityEvent = ReplicatedStorage:FindFirstChild("DashVelocityEvent")
+if not dashVelocityEvent then
+    dashVelocityEvent = Instance.new("RemoteEvent")
+    dashVelocityEvent.Name = "DashVelocityEvent"
+    dashVelocityEvent.Parent = ReplicatedStorage
+end
+=======
+local dashVelocityEvent = ReplicatedStorage:FindFirstChild("DashVelocityEvent")
+if not dashVelocityEvent then
+    dashVelocityEvent = Instance.new("RemoteEvent")
+    dashVelocityEvent.Name = "DashVelocityEvent"
+    dashVelocityEvent.Parent = ReplicatedStorage
+end
+
+-- Move AbilityIcon folder from ServerStorage to ReplicatedStorage if it exists
+local ServerStorage = game:GetService("ServerStorage")
+local serverAbilityIcons = ServerStorage:FindFirstChild("AbilityIcon")
+if serverAbilityIcons then
+    serverAbilityIcons.Parent = ReplicatedStorage
+end
+>>>>>>> REPLACE

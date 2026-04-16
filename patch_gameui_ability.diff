@@ -1,0 +1,139 @@
+<<<<<<< SEARCH
+    local abilityRequestEvent = ReplicatedStorage:WaitForChild("AbilityRequestEvent", 5)
+    local abilityStateEvent = ReplicatedStorage:WaitForChild("AbilityStateEvent", 5)
+
+    -- Ascultăm UpdateStatsEvent
+=======
+    local abilityRequestEvent = ReplicatedStorage:WaitForChild("AbilityRequestEvent", 5)
+    local abilityStateEvent = ReplicatedStorage:WaitForChild("AbilityStateEvent", 5)
+    local ServerStorage = game:GetService("ServerStorage") -- for icons if needed locally, though client can't access ServerStorage directly.
+
+    -- Ability Slot Tracking
+    local function setupAbilitySlot()
+        local inGameGui = playerGui:FindFirstChild("INGAME")
+        if not inGameGui then return end
+        local matchGui = inGameGui:FindFirstChild("MATCH")
+        if not matchGui then return end
+        local hotbarGui = matchGui:FindFirstChild("Hotbar")
+        if not hotbarGui then return end
+
+        local abilitySlot = hotbarGui:FindFirstChild("AbilitySlot")
+        if not abilitySlot then return end
+
+        -- Get references to visual components
+        local abilityImage = abilitySlot:FindFirstChild("AbilityImage")
+        if not abilityImage then
+            -- Fallback
+            abilityImage = Instance.new("ImageLabel")
+            abilityImage.Name = "AbilityImage"
+            abilityImage.Size = UDim2.new(1, 0, 1, 0)
+            abilityImage.BackgroundTransparency = 1
+            abilityImage.Parent = abilitySlot
+        end
+
+        local abilityText = abilitySlot:FindFirstChild("AbilityText")
+
+        -- Create Cooldown Overlay
+        local cooldownOverlay = abilitySlot:FindFirstChild("CooldownOverlay")
+        if not cooldownOverlay then
+            cooldownOverlay = Instance.new("Frame")
+            cooldownOverlay.Name = "CooldownOverlay"
+            cooldownOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+            cooldownOverlay.BackgroundTransparency = 0.5
+            cooldownOverlay.BorderSizePixel = 0
+            cooldownOverlay.AnchorPoint = Vector2.new(0, 1) -- Bottom left anchor
+            cooldownOverlay.Position = UDim2.new(0, 0, 1, 0) -- Starts at bottom
+            cooldownOverlay.Size = UDim2.new(1, 0, 0, 0) -- Starts empty
+            cooldownOverlay.ZIndex = 10
+            cooldownOverlay.Parent = abilitySlot
+        end
+
+        -- Listen for ability updates
+        if abilityStateEvent then
+            table.insert(activeConnections, abilityStateEvent.OnClientEvent:Connect(function(ownedAbilities, equippedAbility, abilitiesDef)
+                if ownedAbilities == "ResetCooldowns" then
+                    -- Reset local cooldown UI
+                    TweenService:Create(cooldownOverlay, TweenInfo.new(0.1), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+                    return
+                end
+
+                if equippedAbility and abilitiesDef and abilitiesDef[equippedAbility] then
+                    local def = abilitiesDef[equippedAbility]
+                    -- The client cannot read ServerStorage. Icons should be in ReplicatedStorage.
+                    -- Assuming we can find it in ReplicatedStorage.AbilityIcon or use Text fallback
+                    local iconFolder = ReplicatedStorage:FindFirstChild("AbilityIcon")
+                    local iconObj = iconFolder and iconFolder:FindFirstChild(equippedAbility)
+
+                    if iconObj and iconObj:IsA("ImageLabel") then
+                        abilityImage.Image = iconObj.Image
+                        abilityImage.Visible = true
+                        if abilityText then abilityText.Visible = false end
+                    elseif iconObj and iconObj:IsA("Texture") then
+                        abilityImage.Image = iconObj.Texture
+                        abilityImage.Visible = true
+                        if abilityText then abilityText.Visible = false end
+                    else
+                        -- Fallback to Text
+                        abilityImage.Visible = false
+                        if not abilityText then
+                            abilityText = Instance.new("TextLabel")
+                            abilityText.Name = "AbilityText"
+                            abilityText.Size = UDim2.new(1, 0, 1, 0)
+                            abilityText.BackgroundTransparency = 1
+                            abilityText.TextScaled = true
+                            abilityText.TextColor3 = Color3.new(1, 1, 1)
+                            abilityText.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
+                            abilityText.Parent = abilitySlot
+                        end
+                        abilityText.Text = def.Name
+                        abilityText.Visible = true
+                    end
+                else
+                    abilityImage.Visible = false
+                    if abilityText then abilityText.Visible = false end
+                end
+            end))
+        end
+
+        -- Track Ability Usage to trigger cooldown UI locally
+        local abilityUseEvent = ReplicatedStorage:WaitForChild("AbilityUseEvent", 5)
+        local UserInputService = game:GetService("UserInputService")
+
+        -- Need to track local equipped state to know the cooldown duration
+        local currentEquipped = nil
+        local cachedAbilitiesDef = nil
+
+        if abilityStateEvent then
+            table.insert(activeConnections, abilityStateEvent.OnClientEvent:Connect(function(owned, equipped, defs)
+                if type(owned) == "table" then
+                    currentEquipped = equipped
+                    cachedAbilitiesDef = defs
+                end
+            end))
+        end
+
+        if abilityUseEvent then
+            table.insert(activeConnections, UserInputService.InputBegan:Connect(function(input, gpe)
+                if gpe then return end
+                if input.KeyCode == Enum.KeyCode.Q then
+                    -- Trigger visual cooldown if we have an ability equipped
+                    if currentEquipped and cachedAbilitiesDef and cachedAbilitiesDef[currentEquipped] then
+                        local cd = cachedAbilitiesDef[currentEquipped].Cooldown or 10
+
+                        -- Only start visual CD if it's currently at 0 (approx)
+                        if cooldownOverlay.Size.Y.Scale <= 0.01 then
+                            -- Instantly fill
+                            cooldownOverlay.Size = UDim2.new(1, 0, 1, 0)
+                            -- Tween down over CD duration
+                            TweenService:Create(cooldownOverlay, TweenInfo.new(cd, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+                        end
+                    end
+                end
+            end))
+        end
+    end
+
+    setupAbilitySlot()
+
+    -- Ascultăm UpdateStatsEvent
+>>>>>>> REPLACE

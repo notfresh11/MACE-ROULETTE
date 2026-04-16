@@ -1,0 +1,215 @@
+<<<<<<< SEARCH
+    if player.Character then
+        setupHealthTracking(player.Character)
+    end
+    table.insert(activeConnections, player.CharacterAdded:Connect(setupHealthTracking))
+
+    if updateStatsEvent then
+=======
+    if player.Character then
+        setupHealthTracking(player.Character)
+    end
+    table.insert(activeConnections, player.CharacterAdded:Connect(setupHealthTracking))
+
+    -- Custom Inventory Logic (Slots 1, 2, 3)
+    local function setupInventoryTracking()
+        local UserInputService = game:GetService("UserInputService")
+        local inGameGui = playerGui:FindFirstChild("INGAME")
+        if not inGameGui then return end
+        local matchGui = inGameGui:FindFirstChild("MATCH")
+        if not matchGui then return end
+        local hotbarGui = matchGui:FindFirstChild("Hotbar")
+        if not hotbarGui then return end
+
+        local slots = {
+            hotbarGui:FindFirstChild("Slot1"),
+            hotbarGui:FindFirstChild("Slot2"),
+            hotbarGui:FindFirstChild("Slot3")
+        }
+
+        local currentTools = {} -- [slotIndex] = tool instance
+
+        local function updateSlotUI(slotIndex, tool)
+            local slotGui = slots[slotIndex]
+            if not slotGui then return end
+
+            local itemLabel = slotGui:FindFirstChild("ItemName") -- If user has a label for name
+            local itemIcon = slotGui:FindFirstChild("ItemIcon") -- Assuming an ImageLabel exists
+
+            -- Dacă nu le găsim, încercăm să găsim orice ImageLabel sau TextLabel în interior (conform instrucțiunilor de text fallback)
+            if not itemIcon then
+                for _, child in ipairs(slotGui:GetChildren()) do
+                    if child:IsA("ImageLabel") and child.Name ~= "HotbarSlot" then
+                        itemIcon = child
+                        break
+                    end
+                end
+            end
+
+            if not itemLabel then
+                for _, child in ipairs(slotGui:GetChildren()) do
+                    if child:IsA("TextLabel") then
+                        itemLabel = child
+                        break
+                    end
+                end
+            end
+
+            if tool then
+                -- Try to find Icon image
+                local iconImage = tool:FindFirstChild("Icon")
+                if iconImage and iconImage:IsA("ImageLabel") and itemIcon then
+                    itemIcon.Image = iconImage.Image
+                    itemIcon.Visible = true
+                    if itemLabel then itemLabel.Visible = false end
+                elseif tool.TextureId and tool.TextureId ~= "" and itemIcon then
+                    itemIcon.Image = tool.TextureId
+                    itemIcon.Visible = true
+                    if itemLabel then itemLabel.Visible = false end
+                else
+                    if itemIcon then itemIcon.Visible = false end
+                    if not itemLabel then
+                        -- Create fallback TextLabel
+                        itemLabel = Instance.new("TextLabel")
+                        itemLabel.Name = "FallbackText"
+                        itemLabel.Size = UDim2.new(1, 0, 1, 0)
+                        itemLabel.BackgroundTransparency = 1
+                        itemLabel.TextScaled = true
+                        itemLabel.TextColor3 = Color3.new(1, 1, 1)
+                        itemLabel.Font = Font.new("rbxasset://fonts/families/FredokaOne.json")
+                        itemLabel.Parent = slotGui
+                    end
+                    itemLabel.Text = tool.Name
+                    itemLabel.Visible = true
+                end
+            else
+                -- Clear slot
+                if itemIcon then itemIcon.Visible = false end
+                if itemLabel then itemLabel.Visible = false end
+            end
+        end
+
+        local function highlightSlot(slotIndex)
+            for i, slotGui in ipairs(slots) do
+                if slotGui then
+                    if i == slotIndex then
+                        -- Animatie select (marire)
+                        TweenService:Create(slotGui, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                            Size = UDim2.new(0.12, 0, 0.12, 0) -- Assuming default size is smaller, adjust if needed
+                        }):Play()
+                    else
+                        -- Animatie deselect (revenire)
+                        TweenService:Create(slotGui, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                            Size = UDim2.new(0.1, 0, 0.1, 0)
+                        }):Play()
+                    end
+                end
+            end
+        end
+
+        local function getPlayerTools()
+            local tools = {}
+            local backpack = player:FindFirstChild("Backpack")
+            if backpack then
+                for _, item in ipairs(backpack:GetChildren()) do
+                    if item:IsA("Tool") then
+                        table.insert(tools, item)
+                    end
+                end
+            end
+            local char = player.Character
+            if char then
+                for _, item in ipairs(char:GetChildren()) do
+                    if item:IsA("Tool") then
+                        table.insert(tools, item)
+                    end
+                end
+            end
+            return tools
+        end
+
+        local function refreshInventory()
+            local allTools = getPlayerTools()
+            currentTools = {nil, nil, nil}
+
+            -- Assign Mace to Slot 1 first
+            for i, tool in ipairs(allTools) do
+                if tool.Name:lower() == "mace" or tool.Name:lower() == "mace" then
+                    currentTools[1] = tool
+                    table.remove(allTools, i)
+                    break
+                end
+            end
+
+            -- Fill remaining slots
+            for i = 1, 3 do
+                if not currentTools[i] and #allTools > 0 then
+                    currentTools[i] = table.remove(allTools, 1)
+                end
+                updateSlotUI(i, currentTools[i])
+            end
+
+            -- Highlight current equipped
+            local char = player.Character
+            local equippedSlot = nil
+            if char then
+                for i = 1, 3 do
+                    if currentTools[i] and currentTools[i].Parent == char then
+                        equippedSlot = i
+                        break
+                    end
+                end
+            end
+            highlightSlot(equippedSlot)
+        end
+
+        -- Hook to Backpack and Character events
+        local backpack = player:WaitForChild("Backpack", 5)
+        if backpack then
+            table.insert(activeConnections, backpack.ChildAdded:Connect(refreshInventory))
+            table.insert(activeConnections, backpack.ChildRemoved:Connect(refreshInventory))
+        end
+
+        local char = player.Character or player.CharacterAdded:Wait()
+        table.insert(activeConnections, char.ChildAdded:Connect(function(child)
+            if child:IsA("Tool") then refreshInventory() end
+        end))
+        table.insert(activeConnections, char.ChildRemoved:Connect(function(child)
+            if child:IsA("Tool") then refreshInventory() end
+        end))
+
+        -- Keybindings
+        table.insert(activeConnections, UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
+
+            local slotToEquip = nil
+            if input.KeyCode == Enum.KeyCode.One then slotToEquip = 1
+            elseif input.KeyCode == Enum.KeyCode.Two then slotToEquip = 2
+            elseif input.KeyCode == Enum.KeyCode.Three then slotToEquip = 3
+            end
+
+            if slotToEquip and currentTools[slotToEquip] then
+                local tool = currentTools[slotToEquip]
+                local char = player.Character
+                local human = char and char:FindFirstChild("Humanoid")
+                if human then
+                    if tool.Parent == char then
+                        -- Unequip
+                        human:UnequipTools()
+                        highlightSlot(nil)
+                    else
+                        -- Equip
+                        human:EquipTool(tool)
+                        highlightSlot(slotToEquip)
+                    end
+                end
+            end
+        end))
+
+        refreshInventory()
+    end
+
+    setupInventoryTracking()
+
+    if updateStatsEvent then
+>>>>>>> REPLACE

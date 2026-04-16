@@ -58,6 +58,13 @@ if not dashVelocityEvent then
     dashVelocityEvent.Parent = ReplicatedStorage
 end
 
+-- Move AbilityIcon folder from ServerStorage to ReplicatedStorage if it exists
+local ServerStorage = game:GetService("ServerStorage")
+local serverAbilityIcons = ServerStorage:FindFirstChild("AbilityIcon")
+if serverAbilityIcons then
+    serverAbilityIcons.Parent = ReplicatedStorage
+end
+
 local function syncAbilities(player)
     local data = DataManager.GetData(player)
     if data then
