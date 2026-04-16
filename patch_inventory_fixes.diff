@@ -1,0 +1,160 @@
+<<<<<<< SEARCH
+        local function refreshInventory()
+            local allTools = getPlayerTools()
+            currentTools = {nil, nil, nil}
+
+            -- Assign Mace to Slot 1 first
+            for i, tool in ipairs(allTools) do
+                if tool.Name:lower() == "mace" then
+                    currentTools[1] = tool
+                    table.remove(allTools, i)
+                    break
+                end
+            end
+
+            -- Fill remaining slots
+            for i = 1, 3 do
+                if not currentTools[i] and #allTools > 0 then
+                    currentTools[i] = table.remove(allTools, 1)
+                end
+                updateSlotUI(i, currentTools[i])
+            end
+
+            -- Highlight current equipped
+            local char = player.Character
+            local equippedSlot = nil
+            if char then
+                for i = 1, 3 do
+                    if currentTools[i] and currentTools[i].Parent == char then
+                        equippedSlot = i
+                        break
+                    end
+                end
+            end
+            highlightSlot(equippedSlot)
+        end
+
+        -- Hook to Backpack and Character events
+        local backpack = player:WaitForChild("Backpack", 5)
+        if backpack then
+            table.insert(activeConnections, backpack.ChildAdded:Connect(refreshInventory))
+            table.insert(activeConnections, backpack.ChildRemoved:Connect(refreshInventory))
+        end
+
+        local char = player.Character or player.CharacterAdded:Wait()
+        table.insert(activeConnections, char.ChildAdded:Connect(function(child)
+            if child:IsA("Tool") then refreshInventory() end
+        end))
+        table.insert(activeConnections, char.ChildRemoved:Connect(function(child)
+            if child:IsA("Tool") then refreshInventory() end
+        end))
+=======
+        local function refreshInventory()
+            local allTools = getPlayerTools()
+
+            -- Keep a set of tools currently present
+            local presentTools = {}
+            for _, t in ipairs(allTools) do
+                presentTools[t] = true
+            end
+
+            -- Remove tools from slots if they no longer exist
+            for i = 1, 3 do
+                if currentTools[i] and not presentTools[currentTools[i]] then
+                    currentTools[i] = nil
+                end
+            end
+
+            -- Pin Mace to Slot 1
+            for _, tool in ipairs(allTools) do
+                if tool.Name:lower() == "mace" and currentTools[1] ~= tool then
+                    -- If Mace wasn't in slot 1, put it there
+                    if currentTools[1] then
+                        -- Move whatever was in 1 to another slot if possible
+                        for j = 2, 3 do
+                            if not currentTools[j] then
+                                currentTools[j] = currentTools[1]
+                                break
+                            end
+                        end
+                    end
+                    currentTools[1] = tool
+                end
+            end
+
+            -- Fill empty slots with new tools
+            for _, tool in ipairs(allTools) do
+                if tool.Name:lower() ~= "mace" then
+                    local alreadyInSlot = false
+                    for i = 1, 3 do
+                        if currentTools[i] == tool then
+                            alreadyInSlot = true
+                            break
+                        end
+                    end
+                    if not alreadyInSlot then
+                        for i = 2, 3 do
+                            if not currentTools[i] then
+                                currentTools[i] = tool
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Update UI
+            for i = 1, 3 do
+                updateSlotUI(i, currentTools[i])
+            end
+
+            -- Highlight current equipped
+            local char = player.Character
+            local equippedSlot = nil
+            if char then
+                for i = 1, 3 do
+                    if currentTools[i] and currentTools[i].Parent == char then
+                        equippedSlot = i
+                        break
+                    end
+                end
+            end
+            highlightSlot(equippedSlot)
+        end
+
+        local inventoryConnections = {}
+
+        local function hookInventory(character)
+            -- Clean old connections
+            for _, c in ipairs(inventoryConnections) do c:Disconnect() end
+            inventoryConnections = {}
+
+            local backpack = player:WaitForChild("Backpack", 5)
+            if backpack then
+                table.insert(inventoryConnections, backpack.ChildAdded:Connect(refreshInventory))
+                table.insert(inventoryConnections, backpack.ChildRemoved:Connect(refreshInventory))
+            end
+
+            if character then
+                table.insert(inventoryConnections, character.ChildAdded:Connect(function(child)
+                    if child:IsA("Tool") then refreshInventory() end
+                end))
+                table.insert(inventoryConnections, character.ChildRemoved:Connect(function(child)
+                    if child:IsA("Tool") then refreshInventory() end
+                end))
+            end
+
+            -- Initial refresh
+            refreshInventory()
+        end
+
+        if player.Character then hookInventory(player.Character) end
+        table.insert(activeConnections, player.CharacterAdded:Connect(hookInventory))
+
+        -- Make sure we cleanup local inventory connections on full script reset
+        table.insert(activeConnections, {
+            Disconnect = function()
+                for _, c in ipairs(inventoryConnections) do c:Disconnect() end
+            end
+        })
+>>>>>>> REPLACE

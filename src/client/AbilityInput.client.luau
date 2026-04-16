@@ -17,6 +17,7 @@ if abilityUseEvent then
         if input.KeyCode == Enum.KeyCode.Q then
             local character = player.Character
             if character and character:FindFirstChild("Humanoid") and character.Humanoid.Health > 0 then
+                -- The visual cooldown is now handled in GameUI.client.luau based on local input
                 abilityUseEvent:FireServer()
             end
         end

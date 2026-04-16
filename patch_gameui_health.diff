@@ -1,0 +1,60 @@
+<<<<<<< SEARCH
+    if updateStatsEvent then
+=======
+    -- Health Bar Logic
+    local function updateHealthUI()
+        local inGameGui = playerGui:FindFirstChild("INGAME")
+        if not inGameGui then return end
+        local matchGui = inGameGui:FindFirstChild("MATCH")
+        if not matchGui then return end
+        local hotbarGui = matchGui:FindFirstChild("Hotbar")
+        if not hotbarGui then return end
+        local healthBarContainer = hotbarGui:FindFirstChild("HealthBar")
+        if not healthBarContainer then return end
+
+        local healthRemained = healthBarContainer:FindFirstChild("HealthRemained")
+        local healthText = healthBarContainer:FindFirstChild("Health")
+
+        local char = player.Character
+        if char then
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                local currentHealth = humanoid.Health
+                local maxHealth = humanoid.MaxHealth
+
+                if healthText then
+                    healthText.Text = tostring(math.floor(currentHealth)) .. "/" .. tostring(math.floor(maxHealth))
+                end
+
+                if healthRemained and maxHealth > 0 then
+                    local ratio = math.clamp(currentHealth / maxHealth, 0, 1)
+                    local targetSize = UDim2.new(ratio, 0, healthRemained.Size.Y.Scale, healthRemained.Size.Y.Offset)
+                    TweenService:Create(healthRemained, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = targetSize}):Play()
+                end
+            end
+        end
+    end
+
+    -- Hook up character added for Health Tracking
+    local function setupHealthTracking(character)
+        local humanoid = character:WaitForChild("Humanoid", 5)
+        if humanoid then
+            -- initial update
+            updateHealthUI()
+
+            table.insert(activeConnections, humanoid.HealthChanged:Connect(function()
+                updateHealthUI()
+            end))
+            table.insert(activeConnections, humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(function()
+                updateHealthUI()
+            end))
+        end
+    end
+
+    if player.Character then
+        setupHealthTracking(player.Character)
+    end
+    table.insert(activeConnections, player.CharacterAdded:Connect(setupHealthTracking))
+
+    if updateStatsEvent then
+>>>>>>> REPLACE
