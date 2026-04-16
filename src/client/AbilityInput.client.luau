@@ -17,8 +17,17 @@ if abilityUseEvent then
         if input.KeyCode == Enum.KeyCode.Q then
             local character = player.Character
             if character and character:FindFirstChild("Humanoid") and character.Humanoid.Health > 0 then
+                local direction = "Forward"
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                    direction = "Back"
+                elseif UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                    direction = "Left"
+                elseif UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                    direction = "Right"
+                end
+
                 -- The visual cooldown is now handled in GameUI.client.luau based on local input
-                abilityUseEvent:FireServer()
+                abilityUseEvent:FireServer(direction)
             end
         end
     end)
@@ -26,12 +35,58 @@ else
     warn("AbilityInput: Nu am putut găsi AbilityUseEvent în ReplicatedStorage.")
 end
 
+local dashAnimForwardIds = {"rbxassetid://99980097234641", "rbxassetid://95366129387683"}
+local dashAnimBackId = "rbxassetid://83645634111421"
+local dashAnimLeftId = "rbxassetid://102416618280187"
+local dashAnimRightId = "rbxassetid://80430289856845"
+
+-- Pre-load animations to prevent memory leaks
+local loadedDashAnims = {}
+local function getDashTrack(animator, animId)
+    if not loadedDashAnims[animator] then
+        loadedDashAnims[animator] = {}
+        -- Setup cleanup for this animator
+        local conn
+        conn = animator.AncestryChanged:Connect(function(_, parent)
+            if not parent then
+                loadedDashAnims[animator] = nil
+                conn:Disconnect()
+            end
+        end)
+    end
+    if not loadedDashAnims[animator][animId] then
+        local anim = Instance.new("Animation")
+        anim.AnimationId = animId
+        loadedDashAnims[animator][animId] = animator:LoadAnimation(anim)
+    end
+    return loadedDashAnims[animator][animId]
+end
+
 if dashVelocityEvent then
-    dashVelocityEvent.OnClientEvent:Connect(function(dashVelocity)
+    dashVelocityEvent.OnClientEvent:Connect(function(dashVelocity, direction)
         local character = player.Character
         if character then
             local rootPart = character:FindFirstChild("HumanoidRootPart")
             if rootPart then
+                -- Play Dash Animation
+                local humanoid = character:FindFirstChild("Humanoid")
+                if humanoid then
+                    local animator = humanoid:FindFirstChild("Animator")
+                    if animator then
+                        local animId = dashAnimForwardIds[math.random(1, #dashAnimForwardIds)]
+                        if direction == "Back" then
+                            animId = dashAnimBackId
+                        elseif direction == "Left" then
+                            animId = dashAnimLeftId
+                        elseif direction == "Right" then
+                            animId = dashAnimRightId
+                        end
+
+                        local track = getDashTrack(animator, animId)
+                        track:Play()
+                    end
+                end
+
                 -- Apply a LinearVelocity for a short duration to make it feel like a real dash
                 local attachment = Instance.new("Attachment", rootPart)
 
