@@ -1,0 +1,60 @@
+<<<<<<< SEARCH
+    local mainUI = playerGui:WaitForChild("MAINUI")
+    if mainUI then
+        applyDynamicUIScale(mainUI)
+    end
+    if not mainUI then return end
+
+    -- Fix UI being pushed down by the topbar
+    if mainUI:IsA("ScreenGui") then
+        mainUI.IgnoreGuiInset = true
+    end
+=======
+    local mainUI = playerGui:WaitForChild("MAINUI")
+    if mainUI then
+        applyDynamicUIScale(mainUI)
+    end
+
+    local inGameUI = playerGui:WaitForChild("INGAME", 5)
+    if inGameUI then
+        applyDynamicUIScale(inGameUI)
+        if inGameUI:IsA("ScreenGui") then
+            inGameUI.IgnoreGuiInset = true
+        end
+    end
+
+    if not mainUI then return end
+
+    -- Fix UI being pushed down by the topbar
+    if mainUI:IsA("ScreenGui") then
+        mainUI.IgnoreGuiInset = true
+    end
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    local function setupAbilitySlot()
+        local inGameGui = playerGui:FindFirstChild("INGAME")
+        if not inGameGui then return end
+        local matchGui = inGameGui:FindFirstChild("MATCH")
+        if not matchGui then return end
+        local hotbarGui = matchGui:FindFirstChild("Hotbar")
+        if not hotbarGui then return end
+
+        local abilitySlot = hotbarGui:FindFirstChild("AbilitySlot")
+        if not abilitySlot then return end
+=======
+    local function setupAbilitySlot()
+        local inGameGui = playerGui:FindFirstChild("INGAME")
+        if not inGameGui then return end
+        local matchGui = inGameGui:FindFirstChild("MATCH")
+        if not matchGui then return end
+        local hotbarGui = matchGui:FindFirstChild("Hotbar")
+        if not hotbarGui then return end
+
+        local abilitySlot = hotbarGui:FindFirstChild("AbilitySlot")
+        if not abilitySlot then return end
+
+        -- Force a sync to make sure we load the ability on spawn
+        if abilityRequestEvent then
+            abilityRequestEvent:FireServer("RequestSync")
+        end
+>>>>>>> REPLACE
