@@ -1,0 +1,61 @@
+<<<<<<< SEARCH
+        -- Track Ability Usage to trigger cooldown UI locally
+        local abilityUseEvent = ReplicatedStorage:WaitForChild("AbilityUseEvent", 5)
+        local UserInputService = game:GetService("UserInputService")
+
+        if abilityUseEvent then
+            table.insert(activeConnections, UserInputService.InputBegan:Connect(function(input, gpe)
+                if gpe then return end
+                if input.KeyCode == Enum.KeyCode.Q then
+                    -- Trigger visual cooldown if we have an ability equipped
+                    if currentEquipped and cachedAbilitiesDef and cachedAbilitiesDef[currentEquipped] then
+                        local cd = cachedAbilitiesDef[currentEquipped].Cooldown or 10
+
+                        -- Only start visual CD if it's currently at 0 (approx)
+                        if cooldownOverlay.Size.Y.Scale <= 0.01 then
+                            -- Instantly fill
+                            cooldownOverlay.Size = UDim2.new(1, 0, 1, 0)
+                            -- Tween down over CD duration
+                            TweenService:Create(cooldownOverlay, TweenInfo.new(cd, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+                        end
+                    end
+                end
+            end))
+        end
+    end
+
+    setupAbilitySlot()
+=======
+        -- Track Ability Usage to trigger cooldown UI locally
+        local abilityUseEvent = ReplicatedStorage:WaitForChild("AbilityUseEvent", 5)
+        local UserInputService = game:GetService("UserInputService")
+
+        if abilityUseEvent then
+            table.insert(activeConnections, UserInputService.InputBegan:Connect(function(input, gpe)
+                if gpe then return end
+                if input.KeyCode == Enum.KeyCode.Q then
+                    -- Trigger visual cooldown if we have an ability equipped
+                    if currentEquipped and cachedAbilitiesDef and cachedAbilitiesDef[currentEquipped] then
+                        local cd = cachedAbilitiesDef[currentEquipped].Cooldown or 10
+
+                        -- Only start visual CD if it's currently at 0 (approx)
+                        if cooldownOverlay.Size.Y.Scale <= 0.01 then
+                            -- Instantly fill
+                            cooldownOverlay.Size = UDim2.new(1, 0, 1, 0)
+                            -- Tween down over CD duration
+                            TweenService:Create(cooldownOverlay, TweenInfo.new(cd, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+                        end
+                    end
+                end
+            end))
+        end
+
+        -- Force initial sync request so the UI populates on spawn
+        local abilityRequestEvent = ReplicatedStorage:WaitForChild("AbilityRequestEvent", 5)
+        if abilityRequestEvent then
+            abilityRequestEvent:FireServer("RequestSync")
+        end
+    end
+
+    setupAbilitySlot()
+>>>>>>> REPLACE

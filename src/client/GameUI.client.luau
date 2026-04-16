@@ -160,6 +160,15 @@ local function setupUI()
     if mainUI then
         applyDynamicUIScale(mainUI)
     end
+
+    local inGameUI = playerGui:WaitForChild("INGAME", 5)
+    if inGameUI then
+        applyDynamicUIScale(inGameUI)
+        if inGameUI:IsA("ScreenGui") then
+            inGameUI.IgnoreGuiInset = true
+        end
+    end
+
     if not mainUI then return end
 
     -- Fix UI being pushed down by the topbar
@@ -264,7 +273,7 @@ local function setupUI()
                     -- Icons are placed in ReplicatedStorage by server script if we move them, but the user said ServerStorage.
                     -- The client cannot read ServerStorage.
                     -- We must assume the server will replicate them or we fallback to Text.
-                    local iconFolder = ReplicatedStorage:FindFirstChild("AbilityIcon")
+                    local iconFolder = ReplicatedStorage:FindFirstChild("AbilityIcon") or ReplicatedStorage:FindFirstChild("AbbilityIcon")
                     local iconObj = iconFolder and iconFolder:FindFirstChild(equippedAbility)
 
                     if iconObj and iconObj:IsA("ImageLabel") then
@@ -320,6 +329,12 @@ local function setupUI()
                     end
                 end
             end))
+        end
+
+        -- Force initial sync request so the UI populates on spawn
+        local abilityRequestEvent = ReplicatedStorage:WaitForChild("AbilityRequestEvent", 5)
+        if abilityRequestEvent then
+            abilityRequestEvent:FireServer("RequestSync")
         end
     end
 
@@ -462,32 +477,22 @@ local function setupUI()
         end
 
         local function highlightSlot(slotIndex)
-            -- Vrem sa manipulam marimea. Presupunem marimea default (ce e salvat initial in designer).
-            -- Ca fallback scriem un size comun.
+            -- We manipulate a UIScale child so the element grows from its center,
+            -- without pushing other elements in a UIListLayout.
             for i, slotGui in ipairs(slots) do
                 if slotGui then
-                    if not slotGui:GetAttribute("OrigSizeXScale") then
-                        slotGui:SetAttribute("OrigSizeXScale", slotGui.Size.X.Scale)
-                        slotGui:SetAttribute("OrigSizeXOffset", slotGui.Size.X.Offset)
-                        slotGui:SetAttribute("OrigSizeYScale", slotGui.Size.Y.Scale)
-                        slotGui:SetAttribute("OrigSizeYOffset", slotGui.Size.Y.Offset)
+                    local uiScale = slotGui:FindFirstChildOfClass("UIScale")
+                    if not uiScale then
+                        uiScale = Instance.new("UIScale")
+                        uiScale.Parent = slotGui
                     end
 
-                    local origSize = UDim2.new(
-                        slotGui:GetAttribute("OrigSizeXScale"), slotGui:GetAttribute("OrigSizeXOffset"),
-                        slotGui:GetAttribute("OrigSizeYScale"), slotGui:GetAttribute("OrigSizeYOffset")
-                    )
-
                     if i == slotIndex then
-                        -- Animatie select (marire)
-                        local targetSize = UDim2.new(
-                            origSize.X.Scale * 1.15, origSize.X.Offset * 1.15,
-                            origSize.Y.Scale * 1.15, origSize.Y.Offset * 1.15
-                        )
-                        TweenService:Create(slotGui, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = targetSize}):Play()
+                        -- Selection animation (grow)
+                        TweenService:Create(uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1.15}):Play()
                     else
-                        -- Animatie deselect (revenire)
-                        TweenService:Create(slotGui, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = origSize}):Play()
+                        -- Deselection animation (return to normal)
+                        TweenService:Create(uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Scale = 1}):Play()
                     end
                 end
             end
@@ -530,41 +535,31 @@ local function setupUI()
                 end
             end
 
-            -- Pin Mace to Slot 1
-            for _, tool in ipairs(allTools) do
-                if tool.Name:lower() == "mace" and currentTools[1] ~= tool then
-                    -- If Mace wasn't in slot 1, put it there
-                    if currentTools[1] then
-                        -- Move whatever was in 1 to another slot if possible
-                        for j = 2, 3 do
-                            if not currentTools[j] then
-                                currentTools[j] = currentTools[1]
-                                break
-                            end
-                        end
-                    end
-                    currentTools[1] = tool
+            -- Clear tools, we will rebuild the slots to strictly enforce Mace on slot 1
+            currentTools = {nil, nil, nil}
+
+            -- Pin Mace to Slot 1 Strictly
+            local maceTool = nil
+            for i = #allTools, 1, -1 do
+                local tool = allTools[i]
+                -- Check if name contains 'mace' anywhere (case insensitive)
+                if string.find(tool.Name:lower(), "mace") then
+                    maceTool = tool
+                    table.remove(allTools, i)
+                    break -- Just grab the first mace we find
                 end
             end
 
-            -- Fill empty slots with new tools
-            for _, tool in ipairs(allTools) do
-                if tool.Name:lower() ~= "mace" then
-                    local alreadyInSlot = false
-                    for i = 1, 3 do
-                        if currentTools[i] == tool then
-                            alreadyInSlot = true
-                            break
-                        end
-                    end
-                    if not alreadyInSlot then
-                        for i = 2, 3 do
-                            if not currentTools[i] then
-                                currentTools[i] = tool
-                                break
-                            end
-                        end
-                    end
+            if maceTool then
+                currentTools[1] = maceTool
+            end
+
+            -- Distribute remaining tools sequentially to empty slots (2 and 3)
+            local toolIndex = 1
+            for slotIndex = 1, 3 do
+                if not currentTools[slotIndex] and toolIndex <= #allTools then
+                    currentTools[slotIndex] = allTools[toolIndex]
+                    toolIndex = toolIndex + 1
                 end
             end
 

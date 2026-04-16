@@ -60,7 +60,7 @@ end
 
 -- Move AbilityIcon folder from ServerStorage to ReplicatedStorage if it exists
 local ServerStorage = game:GetService("ServerStorage")
-local serverAbilityIcons = ServerStorage:FindFirstChild("AbilityIcon")
+local serverAbilityIcons = ServerStorage:FindFirstChild("AbilityIcon") or ServerStorage:FindFirstChild("AbbilityIcon")
 if serverAbilityIcons then
     serverAbilityIcons.Parent = ReplicatedStorage
 end
