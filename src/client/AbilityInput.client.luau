@@ -57,7 +57,9 @@ local function getDashTrack(animator, animId)
     if not loadedDashAnims[animator][animId] then
         local anim = Instance.new("Animation")
         anim.AnimationId = animId
-        loadedDashAnims[animator][animId] = animator:LoadAnimation(anim)
+        local track = animator:LoadAnimation(anim)
+        track.Looped = false
+        loadedDashAnims[animator][animId] = track
     end
     return loadedDashAnims[animator][animId]
 end
@@ -83,7 +85,19 @@ if dashVelocityEvent then
                         end
 
                         local track = getDashTrack(animator, animId)
+                        -- Stop other dash tracks if they are somehow playing
+                        for id, t in pairs(loadedDashAnims[animator]) do
+                            if id ~= animId and t.IsPlaying then
+                                t:Stop(0.1)
+                            end
+                        end
                         track:Play()
+                        -- Ensure it doesn't get stuck
+                        task.delay(0.5, function()
+                            if track and track.IsPlaying then
+                                track:Stop(0.2)
+                            end
+                        end)
                     end
                 end
 
