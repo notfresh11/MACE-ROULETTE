@@ -35,6 +35,27 @@ local hitSoundIds = {
 }
 local lastHitSoundIndex = 0
 
+local loadedHitAnims = {}
+local function getHitTrack(animator, animId)
+    if not loadedHitAnims[animator] then
+        loadedHitAnims[animator] = {}
+        -- Setup cleanup for this animator
+        local conn
+        conn = animator.AncestryChanged:Connect(function(_, parent)
+            if not parent then
+                loadedHitAnims[animator] = nil
+                conn:Disconnect()
+            end
+        end)
+    end
+    if not loadedHitAnims[animator][animId] then
+        local anim = Instance.new("Animation")
+        anim.AnimationId = animId
+        loadedHitAnims[animator][animId] = animator:LoadAnimation(anim)
+    end
+    return loadedHitAnims[animator][animId]
+end
+
 -- Helper function to play a 3D random hit sound without repeating the same one twice
 local function playRandomHitSound(parentPart)
     if #hitSoundIds == 0 or not parentPart then return end
@@ -668,15 +689,11 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
                         end
 
                         -- Play swing animation if we hit someone
-                        if currentTool then
-                            local attackAnim = currentTool:FindFirstChild("Attack") or currentTool:FindFirstChild("attack")
-                            if attackAnim and attackAnim:IsA("Animation") then
-                                local animator = humanoid:FindFirstChildWhichIsA("Animator")
-                                if animator then
-                                    local track = animator:LoadAnimation(attackAnim)
-                                    track:Play()
-                                end
-                            end
+                        local maceHitAnimId = "rbxassetid://98519100500644"
+                        local animator = humanoid:FindFirstChild("Animator")
+                        if animator then
+                            local track = getHitTrack(animator, maceHitAnimId)
+                            track:Play()
                         end
 
                         -- Hit Pause! Înghețăm temporar atacatorul în aer pt 0.08 secunde
@@ -776,15 +793,11 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
                             playRandomHitSound(targetRoot)
                         end
 
-                        if currentTool then
-                            local attackAnim = currentTool:FindFirstChild("Attack") or currentTool:FindFirstChild("attack")
-                            if attackAnim and attackAnim:IsA("Animation") then
-                                local animator = humanoid:FindFirstChildWhichIsA("Animator")
-                                if animator then
-                                    local track = animator:LoadAnimation(attackAnim)
-                                    track:Play()
-                                end
-                            end
+                        local maceHitAnimId = "rbxassetid://98519100500644"
+                        local animator = humanoid:FindFirstChildWhichIsA("Animator")
+                        if animator then
+                            local track = getHitTrack(animator, maceHitAnimId)
+                            track:Play()
                         end
 
                         rootPart.Anchored = true

@@ -161,7 +161,7 @@ abilityRequestEvent.OnServerEvent:Connect(function(player, action, abilityName)
     end
 end)
 
-local function applyDash(player)
+local function applyDash(player, direction)
     local character = player.Character
     if not character then return end
     local rootPart = character:FindFirstChild("HumanoidRootPart")
@@ -170,10 +170,20 @@ local function applyDash(player)
     -- AntiCheat Bypass
     AntiCheat.SetBypass(player, "Speed", 1)
 
+    -- Calculate direction vector
+    local dirVector = rootPart.CFrame.LookVector
+    if direction == "Back" then
+        dirVector = -rootPart.CFrame.LookVector
+    elseif direction == "Left" then
+        dirVector = -rootPart.CFrame.RightVector
+    elseif direction == "Right" then
+        dirVector = rootPart.CFrame.RightVector
+    end
+
     -- Apply velocity locally via RemoteEvent to bypass network ownership issues
     -- Slightly reduced speed from 150 to 110 based on user feedback
-    local dashVelocity = rootPart.CFrame.LookVector * 110
-    dashVelocityEvent:FireClient(player, dashVelocity)
+    local dashVelocity = dirVector * 110
+    dashVelocityEvent:FireClient(player, dashVelocity, direction)
 
     -- Trail Effect - Generated on the server so other players can see it!
     local attachment0 = Instance.new("Attachment", rootPart)
@@ -219,7 +229,7 @@ local function applyShield(player)
 end
 
 -- Handling Ability Use
-abilityUseEvent.OnServerEvent:Connect(function(player)
+abilityUseEvent.OnServerEvent:Connect(function(player, direction)
     -- Abilitatile functioneaza doar in meci sau pe platforma de training
     if not player:GetAttribute("InMatch") and not player:GetAttribute("InTraining") then return end
 
@@ -238,7 +248,7 @@ abilityUseEvent.OnServerEvent:Connect(function(player)
         cooldowns[userId][abilityName] = tick()
 
         if abilityName == "Dash" then
-            applyDash(player)
+            applyDash(player, direction or "Forward")
         elseif abilityName == "Shield" then
             applyShield(player)
         end

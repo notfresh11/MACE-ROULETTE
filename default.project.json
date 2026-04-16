@@ -16,6 +16,12 @@
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "$path": "src/client"
+      },
+      "StarterCharacterScripts": {
+        "$path": "src/starter_character_scripts"
+      },
+      "$properties": {
+        "GameSettingsAvatar": "R6"
       }
     },
 
