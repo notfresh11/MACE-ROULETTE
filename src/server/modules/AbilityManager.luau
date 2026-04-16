@@ -1,0 +1,259 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
+local TweenService = game:GetService("TweenService")
+
+local DataManager = require(script.Parent.DataManager)
+local AntiCheat = require(script.Parent.AntiCheat)
+local ProgressionManager = require(script.Parent.ProgressionManager)
+
+local AbilityManager = {}
+
+-- Ability Definitions
+local Abilities = {
+    Dash = {
+        Name = "Dash",
+        Description = "A QUICK DASH TO DODGE SOMETHING OR TO MOVE QUICKLY",
+        Price = 500,
+        Cooldown = 15
+    },
+    Shield = {
+        Name = "Shield",
+        Description = "A SHIELD THAT PROTECTS YOU FROM A STRONG ATTACK FOR 3 SECONDS",
+        Price = 500,
+        Cooldown = 20
+    }
+}
+
+-- Cooldown tracking
+local cooldowns = {}
+
+-- Setup Remote Events
+local abilityRequestEvent = ReplicatedStorage:FindFirstChild("AbilityRequestEvent")
+if not abilityRequestEvent then
+    abilityRequestEvent = Instance.new("RemoteEvent")
+    abilityRequestEvent.Name = "AbilityRequestEvent"
+    abilityRequestEvent.Parent = ReplicatedStorage
+end
+
+local abilityUseEvent = ReplicatedStorage:FindFirstChild("AbilityUseEvent")
+if not abilityUseEvent then
+    abilityUseEvent = Instance.new("RemoteEvent")
+    abilityUseEvent.Name = "AbilityUseEvent"
+    abilityUseEvent.Parent = ReplicatedStorage
+end
+
+local abilityStateEvent = ReplicatedStorage:FindFirstChild("AbilityStateEvent")
+if not abilityStateEvent then
+    abilityStateEvent = Instance.new("RemoteEvent")
+    abilityStateEvent.Name = "AbilityStateEvent"
+    abilityStateEvent.Parent = ReplicatedStorage
+end
+
+local dashVelocityEvent = ReplicatedStorage:FindFirstChild("DashVelocityEvent")
+if not dashVelocityEvent then
+    dashVelocityEvent = Instance.new("RemoteEvent")
+    dashVelocityEvent.Name = "DashVelocityEvent"
+    dashVelocityEvent.Parent = ReplicatedStorage
+end
+
+local function syncAbilities(player)
+    local data = DataManager.GetData(player)
+    if data then
+        abilityStateEvent:FireClient(player, data.OwnedAbilities, data.EquippedAbility, Abilities)
+    end
+end
+
+local originalAbilities = {}
+
+function AbilityManager.EquipRandomAbility(player)
+    local data = DataManager.GetData(player)
+    if not data then return end
+
+    if originalAbilities[player.UserId] == nil then
+        originalAbilities[player.UserId] = data.EquippedAbility or ""
+    end
+
+    local owned = {}
+    for abName, isOwned in pairs(data.OwnedAbilities) do
+        if isOwned then table.insert(owned, abName) end
+    end
+
+    if #owned > 0 then
+        data.EquippedAbility = owned[math.random(1, #owned)]
+        syncAbilities(player)
+    end
+end
+
+function AbilityManager.RestoreOriginalAbility(player)
+    local data = DataManager.GetData(player)
+    if not data then return end
+
+    if originalAbilities[player.UserId] ~= nil then
+        local orig = originalAbilities[player.UserId]
+        data.EquippedAbility = (orig == "" and nil or orig)
+        originalAbilities[player.UserId] = nil
+        syncAbilities(player)
+    end
+end
+
+-- Handling UI Requests
+abilityRequestEvent.OnServerEvent:Connect(function(player, action, abilityName)
+    local data = DataManager.GetData(player)
+
+    if action == "RequestSync" then
+        if data then
+            syncAbilities(player)
+        else
+            -- Data might still be loading from DataStore, wait for it
+            task.spawn(function()
+                local retries = 0
+                while not DataManager.GetData(player) and retries < 10 do
+                    task.wait(1)
+                    retries += 1
+                end
+                if DataManager.GetData(player) then
+                    syncAbilities(player)
+                end
+            end)
+        end
+        return
+    end
+
+    if not data then return end
+
+    if action == "Buy" then
+        local abilityDef = Abilities[abilityName]
+        if abilityDef and not data.OwnedAbilities[abilityName] then
+            if data.Coins >= abilityDef.Price then
+                ProgressionManager.AddCoins(player, -abilityDef.Price)
+                data.OwnedAbilities[abilityName] = true
+                syncAbilities(player)
+            else
+                local showTextEvent = ReplicatedStorage:FindFirstChild("ShowTextEvent")
+                if showTextEvent then
+                    showTextEvent:FireClient(player, "Not enough coins!", Color3.new(1, 0, 0), "rbxassetid://138081502")
+                    task.delay(1.5, function()
+                        local hideTextEvent = ReplicatedStorage:FindFirstChild("HideTextEvent")
+                        if hideTextEvent then hideTextEvent:FireClient(player) end
+                    end)
+                end
+            end
+        end
+    elseif action == "Equip" then
+        if data.OwnedAbilities[abilityName] then
+            data.EquippedAbility = abilityName
+            syncAbilities(player)
+        end
+    elseif action == "Unequip" then
+        if data.EquippedAbility == abilityName then
+            data.EquippedAbility = nil
+            syncAbilities(player)
+        end
+    end
+end)
+
+local function applyDash(player)
+    local character = player.Character
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    -- AntiCheat Bypass
+    AntiCheat.SetBypass(player, "Speed", 1)
+
+    -- Apply velocity locally via RemoteEvent to bypass network ownership issues
+    -- Slightly reduced speed from 150 to 110 based on user feedback
+    local dashVelocity = rootPart.CFrame.LookVector * 110
+    dashVelocityEvent:FireClient(player, dashVelocity)
+
+    -- Trail Effect - Generated on the server so other players can see it!
+    local attachment0 = Instance.new("Attachment", rootPart)
+    attachment0.Position = Vector3.new(0, 1, 0)
+    local attachment1 = Instance.new("Attachment", rootPart)
+    attachment1.Position = Vector3.new(0, -1, 0)
+
+    local trail = Instance.new("Trail")
+    trail.Attachment0 = attachment0
+    trail.Attachment1 = attachment1
+    trail.Color = ColorSequence.new(Color3.new(1, 1, 1))
+    trail.Lifetime = 0.5
+    trail.Parent = rootPart
+
+    -- Disable trail generation after dash ends (0.18s) for a smooth fade out
+    task.delay(0.18, function()
+        if trail then trail.Enabled = false end
+    end)
+
+    -- Destroy completely after 0.5s to clean up memory
+    Debris:AddItem(trail, 0.5)
+    Debris:AddItem(attachment0, 0.5)
+    Debris:AddItem(attachment1, 0.5)
+end
+
+local function applyShield(player)
+    local character = player.Character
+    if not character then return end
+
+    character:SetAttribute("ShieldActive", true)
+
+    local forceField = Instance.new("ForceField")
+    forceField.Parent = character
+
+    task.delay(3, function()
+        if character then
+            character:SetAttribute("ShieldActive", false)
+        end
+        if forceField then
+            forceField:Destroy()
+        end
+    end)
+end
+
+-- Handling Ability Use
+abilityUseEvent.OnServerEvent:Connect(function(player)
+    -- Abilitatile functioneaza doar in meci sau pe platforma de training
+    if not player:GetAttribute("InMatch") and not player:GetAttribute("InTraining") then return end
+
+    local data = DataManager.GetData(player)
+    if not data or not data.EquippedAbility then return end
+
+    local abilityName = data.EquippedAbility
+    local abilityDef = Abilities[abilityName]
+    if not abilityDef then return end
+
+    local userId = player.UserId
+    if not cooldowns[userId] then cooldowns[userId] = {} end
+
+    local lastUsed = cooldowns[userId][abilityName] or 0
+    if tick() - lastUsed >= abilityDef.Cooldown then
+        cooldowns[userId][abilityName] = tick()
+
+        if abilityName == "Dash" then
+            applyDash(player)
+        elseif abilityName == "Shield" then
+            applyShield(player)
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    cooldowns[player.UserId] = nil
+end)
+
+-- Public API
+function AbilityManager.ResetCooldowns(player)
+    if player and cooldowns[player.UserId] then
+        cooldowns[player.UserId] = {}
+        -- Trimite un event clientului ca sa reseteze si UI-ul
+        abilityStateEvent:FireClient(player, "ResetCooldowns")
+    end
+end
+
+-- Require Abilities table for other modules
+function AbilityManager.GetAbilities()
+    return Abilities
+end
+
+return AbilityManager
