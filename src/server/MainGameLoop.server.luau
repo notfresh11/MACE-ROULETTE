@@ -1,34 +1,14 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 
-
+-- Initialize NetworkService immediately to ensure all RemoteEvents/Functions are pre-instantiated in the Remotes folder
+NetworkService.Init()
 
 local maceBounceEventName = "MaceBounceEvent"
 if not ReplicatedStorage:FindFirstChild(maceBounceEventName) then
     local event = Instance.new("RemoteEvent")
     event.Name = maceBounceEventName
     event.Parent = ReplicatedStorage
-end
-
--- UI Events
--- UI Events and VFX
-local uiEvents = {
-    "ShowCountdownEvent", "ShowTextEvent", "HideTextEvent", "VfxEvent", "ToggleAFKEvent", "ToggleMainUIEvent",
-    "UpdateMatchmakingUIEvent", "PartyUpdateEvent", "PartyActionEvent",
-    "SendNotificationEvent", "NotificationAnswerEvent", "NotificationReceivedEvent"
-}
-for _, evName in ipairs(uiEvents) do
-    if not ReplicatedStorage:FindFirstChild(evName) then
-        local ev = Instance.new("RemoteEvent")
-        ev.Name = evName
-        ev.Parent = ReplicatedStorage
-    end
-end
-
-if not ReplicatedStorage:FindFirstChild("FetchFriendsFunction") then
-    local ev = Instance.new("RemoteFunction")
-    ev.Name = "FetchFriendsFunction"
-    ev.Parent = ReplicatedStorage
 end
 
 local toggleAfkEvent = NetworkService.GetEvent("ToggleAFKEvent")
