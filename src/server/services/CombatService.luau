@@ -1,30 +1,22 @@
-local MaceMechanic = {}
+local CombatService = {}
 local ServerStorage = game:GetService("ServerStorage")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MathUtils = require(ReplicatedStorage.Shared.utils.MathUtils)
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ProgressionManager = require(script.Parent.ProgressionManager)
 local AntiCheat = require(script.Parent.AntiCheat)
 
 -- Tracking per-player cleanup functions to allow multiple concurrent maces
-MaceMechanic.playerCleanups = {}
+CombatService.playerCleanups = {}
 
 
 -- Ensure Events exist
-local vfxEvent = ReplicatedStorage:FindFirstChild("VfxEvent")
-if not vfxEvent then
-    vfxEvent = Instance.new("RemoteEvent")
-    vfxEvent.Name = "VfxEvent"
-    vfxEvent.Parent = ReplicatedStorage
-end
+local vfxEvent = NetworkService.GetEvent("VfxEvent")
 
-local shockwaveEvent = ReplicatedStorage:FindFirstChild("ShockwaveVfxEvent")
-if not shockwaveEvent then
-    shockwaveEvent = Instance.new("RemoteEvent")
-    shockwaveEvent.Name = "ShockwaveVfxEvent"
-    shockwaveEvent.Parent = ReplicatedStorage
-end
+local shockwaveEvent = NetworkService.GetEvent("ShockwaveVfxEvent")
 
 -- Hit Sounds Setup
 local hitSoundIds = {
@@ -123,9 +115,9 @@ end
 -- Get the RemoteEvent created by MainGameLoop
 local maceEventName = "MaceAttackEvent"
 local attackEvent = ReplicatedStorage:WaitForChild(maceEventName)
-local ModifierManager = require(script.Parent.ModifierManager)
+local ModifierService = require(script.Parent.Parent.services.ModifierService)
 
-function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allMaceUsers)
+function CombatService.startMechanic(player, onRoundEndCallback, isTraining, allMaceUsers)
     allMaceUsers = allMaceUsers or {player}
     local roundActive = true
     local currentPlayer = player
@@ -151,7 +143,7 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
         if toolTemplate and toolTemplate:IsA("Tool") then
             currentTool = toolTemplate:Clone()
 
-            if ModifierManager.IsModifierActive("Impostor") then
+            if ModifierService.IsModifierActive("Impostor") then
                 for _, part in ipairs(currentTool:GetDescendants()) do
                     if part:IsA("BasePart") or part:IsA("Decal") then
                         part.Transparency = 1
@@ -169,19 +161,19 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
             currentTool.Parent = player.Backpack
             humanoid:EquipTool(currentTool)
         else
-            warn("MaceMechanic: Nu am putut găsi tool-ul 'Tool' în ServerStorage.Hammer!")
+            warn("CombatService: Nu am putut găsi tool-ul 'Tool' în ServerStorage.Hammer!")
         end
     else
-        warn("MaceMechanic: Nu am putut găsi folderul 'Hammer' în ServerStorage!")
+        warn("CombatService: Nu am putut găsi folderul 'Hammer' în ServerStorage!")
     end
 
-    if not MaceMechanic.jumpCooldowns then MaceMechanic.jumpCooldowns = {} end
+    if not CombatService.jumpCooldowns then CombatService.jumpCooldowns = {} end
 
     -- Cooldown jump în training: 10 secunde
     local applyJumpBoost = true
     if isTraining then
         local userId = player.UserId
-        local lastJump = MaceMechanic.jumpCooldowns[userId] or 0
+        local lastJump = CombatService.jumpCooldowns[userId] or 0
         if tick() - lastJump < 10 then
             applyJumpBoost = false
         end
@@ -209,13 +201,13 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
     AntiCheat.SetBypass(player, "Speed", 20)
 
     -- Check Shadow Assassin modifier
-    local isShadowAssassin = ModifierManager.IsModifierActive("Shadow Assasin")
-    local isGhostParty = ModifierManager.IsModifierActive("Ghost Party")
+    local isShadowAssassin = ModifierService.IsModifierActive("Shadow Assasin")
+    local isGhostParty = ModifierService.IsModifierActive("Ghost Party")
 
     if isShadowAssassin and not isGhostParty then
-        ModifierManager.ApplyGhostToCharacter(character, true, true)
+        ModifierService.ApplyGhostToCharacter(character, true, true)
     elseif isGhostParty then
-        ModifierManager.ApplyGhostToCharacter(character, true, true)
+        ModifierService.ApplyGhostToCharacter(character, true, true)
     else
         -- VFX: Highlight & Trail Setup
         local highlight = Instance.new("Highlight")
@@ -316,14 +308,14 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
         local highlight = character and character:FindFirstChildWhichIsA("Highlight")
         if highlight then highlight:Destroy() end
         if isShadowAssassin or isGhostParty then
-             if character then ModifierManager.ApplyGhostToCharacter(character, false) end
+             if character then ModifierService.ApplyGhostToCharacter(character, false) end
         end
         if trail then trail:Destroy() end
         if attachTop then attachTop:Destroy() end
         if attachBottom then attachBottom:Destroy() end
 
         -- Reapply baseline states based on active modifiers (Ghost Party, I cant see, Super Speed)
-        ModifierManager.ReapplyPlayerStates(player)
+        ModifierService.ReapplyPlayerStates(player)
 
         if humanoid then
             humanoid.UseJumpPower = false
@@ -331,15 +323,15 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
             humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
         end
 
-        MaceMechanic.playerCleanups[player] = nil
+        CombatService.playerCleanups[player] = nil
     end
 
     -- Tracking per-player for abrupt stops
-    MaceMechanic.playerCleanups[player] = cleanup
+    CombatService.playerCleanups[player] = cleanup
 
     -- Expose cleanup globally for abrupt match ends
-    MaceMechanic.forceStopMechanic = function()
-        for _, plrcleanup in pairs(MaceMechanic.playerCleanups) do
+    CombatService.forceStopMechanic = function()
+        for _, plrcleanup in pairs(CombatService.playerCleanups) do
             plrcleanup()
         end
     end
@@ -354,7 +346,7 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
 
             -- Tăiem JumpHeight ca să nu poată ține Space apăsat la nesfârșit (Bunny Hop)
             if not isTraining then
-                local isSuddenDeath = ModifierManager.IsModifierActive("SuddenDeath")
+                local isSuddenDeath = ModifierService.IsModifierActive("SuddenDeath")
                 if not isSuddenDeath then
                     humanoid.JumpHeight = 0
                     -- Dezactivăm complet motorul de săritură pentru a preveni input spam la aterizare
@@ -366,7 +358,7 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
             else
                 local userId = player.UserId
                 if humanoid.JumpHeight > 30 then
-                    MaceMechanic.jumpCooldowns[userId] = tick()
+                    CombatService.jumpCooldowns[userId] = tick()
                     humanoid.JumpHeight = 7.2
                 end
             end
@@ -383,7 +375,7 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
         -- Training jump cooldown recharger
         if isTraining and humanoid and humanoid.Health > 0 then
             local userId = player.UserId
-            local lastJump = MaceMechanic.jumpCooldowns[userId] or 0
+            local lastJump = CombatService.jumpCooldowns[userId] or 0
             if tick() - lastJump >= 10 then
                 -- Doar dacă nu e deja în aer redăm jump-ul mare
                 if humanoid:GetState() ~= Enum.HumanoidStateType.Freefall and humanoid.JumpHeight < 30 then
@@ -454,7 +446,7 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
                             humanoid.JumpHeight = 7.2
                         end
                     else
-                        local isSuddenDeath = ModifierManager.IsModifierActive("SuddenDeath")
+                        local isSuddenDeath = ModifierService.IsModifierActive("SuddenDeath")
                         if isSuddenDeath then
                             -- În SuddenDeath nu se resetează runda când aterizezi, are infinite sărituri de la sol
                             if humanoid then
@@ -649,7 +641,7 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
                         end
 
                         -- SHOCKWAVE MODIFIER LOGIC
-                        if ModifierManager.IsModifierActive("Shockwave") then
+                        if ModifierService.IsModifierActive("Shockwave") then
                             local targetRoot = hitChar:FindFirstChild("HumanoidRootPart")
                             if targetRoot then
                                 local blastPos = targetRoot.Position
@@ -858,7 +850,7 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
             -- Dar o ținem dezactivată până el chiar trebuie să sară iar (ca să prevină spam-ul din zbor)
             -- Nu facem enable aici, el oricum primește bounce-ul prin script, nu fizic!
             if not isTraining then
-                local isSuddenDeath = ModifierManager.IsModifierActive("SuddenDeath")
+                local isSuddenDeath = ModifierService.IsModifierActive("SuddenDeath")
                 if not isSuddenDeath then
                     humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
                 end
@@ -880,4 +872,4 @@ function MaceMechanic.startMechanic(player, onRoundEndCallback, isTraining, allM
     end))
 end
 
-return MaceMechanic
+return CombatService

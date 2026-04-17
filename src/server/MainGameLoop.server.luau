@@ -1,12 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 
--- Create the RemoteEvent FIRST, before any scripts try to wait for it or require modules
-local maceEventName = "MaceAttackEvent"
-if not ReplicatedStorage:FindFirstChild(maceEventName) then
-    local event = Instance.new("RemoteEvent")
-    event.Name = maceEventName
-    event.Parent = ReplicatedStorage
-end
+
 
 local maceBounceEventName = "MaceBounceEvent"
 if not ReplicatedStorage:FindFirstChild(maceBounceEventName) then
@@ -36,7 +31,7 @@ if not ReplicatedStorage:FindFirstChild("FetchFriendsFunction") then
     ev.Parent = ReplicatedStorage
 end
 
-local toggleAfkEvent = ReplicatedStorage:WaitForChild("ToggleAFKEvent")
+local toggleAfkEvent = NetworkService.GetEvent("ToggleAFKEvent")
 toggleAfkEvent.OnServerEvent:Connect(function(player, isAFK)
     if typeof(isAFK) == "boolean" then
         player:SetAttribute("IsAFK", isAFK)
@@ -45,7 +40,7 @@ end)
 
 local Matchmaking = require(script.Parent.modules.Matchmaking)
 local Roulette = require(script.Parent.modules.Roulette)
-local MaceMechanic = require(script.Parent.modules.MaceMechanic)
+local CombatService = require(script.Parent.modules.CombatService)
 local HotPotatoMechanic = require(script.Parent.modules.HotPotatoMechanic)
 local MapManager = require(script.Parent.modules.MapManager)
 local DataManager = require(script.Parent.modules.DataManager)
@@ -53,7 +48,7 @@ local ProgressionManager = require(script.Parent.modules.ProgressionManager)
 local AntiCheat = require(script.Parent.modules.AntiCheat)
 local AbilityManager = require(script.Parent.modules.AbilityManager)
 local TrainingManager = require(script.Parent.modules.TrainingManager)
-local ModifierManager = require(script.Parent.modules.ModifierManager)
+local ModifierService = require(script.Parent.services.ModifierService)
 local PartyManager = require(script.Parent.modules.PartyManager)
 local NotificationManager = require(script.Parent.modules.NotificationManager)
 
@@ -168,12 +163,12 @@ local function gameLoop()
             local activePlayers = Matchmaking.getActivePlayers()
             print("MainLoop: Meciul a început cu " .. #activePlayers .. " jucători!")
 
-            ModifierManager.ClearAllModifiers()
-            ModifierManager.PickAndAddModifier(#activePlayers)
+            ModifierService.ClearAllModifiers()
+            ModifierService.PickAndAddModifier(#activePlayers)
 
             -- Apply baseline states (like Super Speed) to everyone entering the match
             for _, player in ipairs(activePlayers) do
-                ModifierManager.ReapplyPlayerStates(player)
+                ModifierService.ReapplyPlayerStates(player)
             end
 
             -- Rewards for participation & Hide UI
@@ -207,16 +202,16 @@ local function gameLoop()
                 print("MainLoop: Începem o NOUĂ RUNDĂ cu " .. #activePlayers .. " supraviețuitori.")
 
                 if not isFirstRound then
-                    ModifierManager.ClearRoundModifiers()
-                    ModifierManager.PickAndAddModifier(#activePlayers)
+                    ModifierService.ClearRoundModifiers()
+                    ModifierService.PickAndAddModifier(#activePlayers)
                 end
                 isFirstRound = false
 
                 -- Ensure all players have correct baseline stats updated for the new modifier
-                local isRandomStrategy = ModifierManager.IsModifierActive("Random Strategy")
+                local isRandomStrategy = ModifierService.IsModifierActive("Random Strategy")
 
                 for _, player in ipairs(activePlayers) do
-                    ModifierManager.ReapplyPlayerStates(player)
+                    ModifierService.ReapplyPlayerStates(player)
 
                     if isRandomStrategy then
                         AbilityManager.EquipRandomAbility(player)
@@ -237,14 +232,14 @@ local function gameLoop()
                     end
                 end
 
-                local isStreamsnipe = ModifierManager.IsModifierActive("Streamsnipe")
+                local isStreamsnipe = ModifierService.IsModifierActive("Streamsnipe")
 
                 local numMaces = 1
                 if isStreamsnipe then
                     numMaces = math.max(1, #activePlayers - 1)
-                elseif ModifierManager.IsModifierActive("Triple Trouble !") then
+                elseif ModifierService.IsModifierActive("Triple Trouble !") then
                     numMaces = 3
-                elseif ModifierManager.IsModifierActive("Double Trouble !") then
+                elseif ModifierService.IsModifierActive("Double Trouble !") then
                     numMaces = 2
                 end
 
@@ -420,7 +415,7 @@ local function gameLoop()
                                         roundEnded = true
                                     end
 
-                                    if ModifierManager.IsModifierActive("SuddenDeath") then
+                                    if ModifierService.IsModifierActive("SuddenDeath") then
                                         print("MainLoop: A player died during SuddenDeath. Round ends.")
                                         roundEnded = true
                                     end
@@ -430,14 +425,14 @@ local function gameLoop()
                     end
 
                     for _, chosenPlayer in ipairs(chosenPlayers) do
-                        if ModifierManager.IsModifierActive("Hot Potato") then
+                        if ModifierService.IsModifierActive("Hot Potato") then
                             HotPotatoMechanic.startMechanic(chosenPlayer, onAttackerFinished, activePlayers)
                         else
-                            MaceMechanic.startMechanic(chosenPlayer, onAttackerFinished, false, chosenPlayers)
+                            CombatService.startMechanic(chosenPlayer, onAttackerFinished, false, chosenPlayers)
                         end
                     end
 
-                    if ModifierManager.IsModifierActive("Beach Episode") then
+                    if ModifierService.IsModifierActive("Beach Episode") then
                         local ServerStorage = game:GetService("ServerStorage")
                         local beachBallFolder = ServerStorage:FindFirstChild("BeachBall")
                         if beachBallFolder then
@@ -456,7 +451,7 @@ local function gameLoop()
 
                     local heartbeatConn
                     heartbeatConn = RunService.Heartbeat:Connect(function()
-                        ModifierManager.UpdateDynamicModifiers(activePlayers, chosenPlayers)
+                        ModifierService.UpdateDynamicModifiers(activePlayers, chosenPlayers)
                     end)
 
                     -- Wait until the round is marked as ended (by missing or the attacker dying)
@@ -509,8 +504,8 @@ local function gameLoop()
                 end
 
                 -- Force cleanup of the mechanic in case a round ended abruptly (e.g. opponent died, leaving only the attacker)
-                if MaceMechanic.forceStopMechanic then
-                    MaceMechanic.forceStopMechanic()
+                if CombatService.forceStopMechanic then
+                    CombatService.forceStopMechanic()
                 end
                 if HotPotatoMechanic.forceStopMechanic then
                     HotPotatoMechanic.forceStopMechanic()
@@ -520,7 +515,7 @@ local function gameLoop()
                     AbilityManager.RestoreOriginalAbility(p)
                 end
 
-                ModifierManager.ClearAllModifiers()
+                ModifierService.ClearAllModifiers()
 
                 -- Dacă bucla de runde s-a terminat, înseamnă că meciul s-a încheiat (avem <= 1 supraviețuitori)
                 if #activePlayers == 1 then

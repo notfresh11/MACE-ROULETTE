@@ -2,6 +2,7 @@ local MessagingService = game:GetService("MessagingService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 local DataManager = require(script.Parent.DataManager)
 local PartyManager = require(script.Parent.PartyManager)
 
@@ -22,9 +23,9 @@ local function sendNotificationReceivedEvent(player, notifType, senderUserId, se
 end
 
 function NotificationManager.Init()
-    local SendNotificationEvent = ReplicatedStorage:WaitForChild("SendNotificationEvent")
-    local NotificationAnswerEvent = ReplicatedStorage:WaitForChild("NotificationAnswerEvent")
-    local FetchFriendsFunction = ReplicatedStorage:WaitForChild("FetchFriendsFunction")
+    local SendNotificationEvent = NetworkService.GetEvent("SendNotificationEvent")
+    local NotificationAnswerEvent = NetworkService.GetEvent("NotificationAnswerEvent")
+    local FetchFriendsFunction = NetworkService.GetEvent("FetchFriendsFunction")
 
     -- Handle Cross-Server Messages
     pcall(function()

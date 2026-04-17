@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 
 local playerWeights = {}
 
@@ -142,9 +143,9 @@ function Roulette.playRouletteAnimation(targetPlayers, currentHammerInstances)
     local SPIN_DURATION = 3
     local startTime = tick()
 
-    local showCountdownEvent = ReplicatedStorage:WaitForChild("ShowCountdownEvent")
-    local showTextEvent = ReplicatedStorage:WaitForChild("ShowTextEvent")
-    local hideTextEvent = ReplicatedStorage:WaitForChild("HideTextEvent")
+    local showCountdownEvent = NetworkService.GetEvent("ShowCountdownEvent")
+    local showTextEvent = NetworkService.GetEvent("ShowTextEvent")
+    local hideTextEvent = NetworkService.GetEvent("HideTextEvent")
     local COUNTDOWN_SOUND = "rbxassetid://110001162763213"
     local START_SOUND = "rbxassetid://77736543307386"
 
@@ -197,12 +198,12 @@ function Roulette.playRouletteAnimation(targetPlayers, currentHammerInstances)
 
     task.wait(SPIN_DURATION)
 
-    local ModifierManager = require(script.Parent.ModifierManager)
+    local ModifierService = require(script.Parent.Parent.services.ModifierService)
     local msg = table.concat(names, " & ") .. " got the Mace!"
 
-    if ModifierManager.IsModifierActive("Hot Potato") then
+    if ModifierService.IsModifierActive("Hot Potato") then
         msg = table.concat(names, " & ") .. " got the Hot Potato!"
-    elseif ModifierManager.IsModifierActive("Streamsnipe") then
+    elseif ModifierService.IsModifierActive("Streamsnipe") then
         msg = table.concat(names, " & ") .. " did NOT get the Mace!"
     end
 

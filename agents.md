@@ -45,3 +45,9 @@
 * **Reparenting:** NU folosi `while #folder:GetChildren() > 0`. Folosește mereu `for _, child in ipairs(folder:GetChildren()) do`.
 * **Debug Messages:** Limba Română, format obligatoriu: `print("[DEBUG] NumeSistem: Mesaj")`.
 * **Tool Stealth:** Pentru unelte fără animația de braț ridicat: `RequiresHandle = false`, redenumire `Handle` și transparență `1`.
+## 8. Arhitectură și Refactorizare Extinsă (Knowledge Log)
+* **UI Pattern (Code-Only UI):** Folosim exclusiv generarea de UI via cod. Orice element nou se instanțiază prin `UIFactory` (`src/client/components/UIFactory.luau`) pentru a garanta consistența și a elimina proprietățile boilerplate direct în scripturile clienților (ex. `GameUI`).
+* **State Management:** `ModifierService` (`src/server/services/ModifierService.luau`) este sursa unică de adevăr pentru statusul jucătorilor. Modificările specifice sunt delegate către sub-module (ex. `MovementModifiers`, `VisualModifiers`). Nu interoga proprietățile instanțelor (ex: WalkSpeed) din Humanoid pentru verificări de logica; cere datele din Service.
+* **Network Safety (EventService/NetworkService):** Orice `RemoteEvent` sau `RemoteFunction` TREBUIE înregistrat și instanțiat o singură dată la startup prin `NetworkService` (`src/shared/NetworkService.luau`). Apelurile din module folosesc `NetworkService.GetEvent("NumeEvent")` în loc de `Instance.new` sau `WaitForChild` direct pe `ReplicatedStorage`.
+* **Mace/Combat Split:** Partea de client (`MaceInput`) trimite DOAR intenția de lovire, iar `CombatService` evaluează totul pe server folosind logica partajată din `MathUtils` (`src/shared/utils/MathUtils.luau`).
+* **Dependency Map Warning:** Evită cuplarea strânsă - UI-ul consumă evenimente și ascultă de Server, nu citește stări direct; `MainGameLoop` guvernează viaținția rundelor (inner/outer loop) apeland Services (Network, Modifier, Combat), nu implementând logica lor intern.

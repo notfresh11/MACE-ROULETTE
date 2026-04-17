@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 
@@ -15,6 +16,9 @@ task.spawn(function()
     until success
 end)
 local playerGui = player:WaitForChild("PlayerGui")
+local UIFactory = require(script.Parent.components.UIFactory)
+local ShopPanel = require(script.Parent.components.panels.ShopPanel)
+local NotificationPanel = require(script.Parent.components.panels.NotificationPanel)
 
 -- Creează UI-ul
 local screenGui = Instance.new("ScreenGui")
@@ -22,36 +26,37 @@ screenGui.Name = "GameUIScreen"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
-local textLabel = Instance.new("TextLabel")
-textLabel.Name = "CenterText"
-textLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-textLabel.Size = UDim2.new(1, 0, 0.1, 0) -- Făcut textul și mai mic (de la 0.15 la 0.1) pentru countdown
-textLabel.Position = UDim2.new(0.5, 0, 0.5, 0) -- Exact pe centrul ecranului
-textLabel.BackgroundTransparency = 1
--- Schimbat pe fontul FredokaOne dorit de utilizator
-textLabel.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
-textLabel.TextScaled = true
-textLabel.TextColor3 = Color3.new(1, 1, 1) -- Alb default
-textLabel.TextStrokeTransparency = 0 -- Contur negru
-textLabel.Text = ""
-textLabel.Visible = false
-textLabel.Parent = screenGui
+local textLabel = UIFactory.CreateTextLabel({
+    Name = "CenterText",
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Size = UDim2.new(1, 0, 0.1, 0),
+    Position = UDim2.new(0.5, 0, 0.5, 0),
+    BackgroundTransparency = 1,
+    FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json"),
+    TextScaled = true,
+    TextColor3 = Color3.new(1, 1, 1),
+    TextStrokeTransparency = 0,
+    Text = "",
+    Visible = false,
+    Parent = screenGui
+})
 
-local hotPotatoLabel = Instance.new("TextLabel")
-hotPotatoLabel.Name = "HotPotatoText"
-hotPotatoLabel.AnchorPoint = Vector2.new(0.5, 0)
-hotPotatoLabel.Size = UDim2.new(1, 0, 0.1, 0)
-hotPotatoLabel.Position = UDim2.new(0.5, 0, 0.1, 0) -- Top center
-hotPotatoLabel.BackgroundTransparency = 1
-hotPotatoLabel.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
-hotPotatoLabel.TextScaled = true
-hotPotatoLabel.TextColor3 = Color3.new(1, 0.3, 0)
-hotPotatoLabel.TextStrokeTransparency = 0
-hotPotatoLabel.Text = ""
-hotPotatoLabel.Visible = false
-hotPotatoLabel.Parent = screenGui
+local hotPotatoLabel = UIFactory.CreateTextLabel({
+    Name = "HotPotatoText",
+    AnchorPoint = Vector2.new(0.5, 0),
+    Size = UDim2.new(1, 0, 0.1, 0),
+    Position = UDim2.new(0.5, 0, 0.1, 0),
+    BackgroundTransparency = 1,
+    FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json"),
+    TextScaled = true,
+    TextColor3 = Color3.new(1, 0.3, 0),
+    TextStrokeTransparency = 0,
+    Text = "",
+    Visible = false,
+    Parent = screenGui
+})
 
-local modifiersLabel = Instance.new("TextLabel")
+local modifiersLabel = UIFactory.CreateTextLabel({})
 modifiersLabel.Name = "ModifiersText"
 modifiersLabel.AnchorPoint = Vector2.new(0.5, 0)
 modifiersLabel.Size = UDim2.new(0.9, 0, 0, 0)
@@ -207,8 +212,8 @@ local function setupUI()
         applyDynamicUIScale(settingsGui)
     end
 
-    local abilityRequestEvent = ReplicatedStorage:WaitForChild("AbilityRequestEvent", 5)
-    local abilityStateEvent = ReplicatedStorage:WaitForChild("AbilityStateEvent", 5)
+    local abilityRequestEvent = NetworkService.GetEvent("AbilityRequestEvent")
+    local abilityStateEvent = NetworkService.GetEvent("AbilityStateEvent")
 
     -- Ability Slot Tracking
     local function setupAbilitySlot()
@@ -226,7 +231,7 @@ local function setupUI()
         local abilityImage = abilitySlot:FindFirstChild("AbilityImage")
         if not abilityImage then
             -- Fallback
-            abilityImage = Instance.new("ImageLabel")
+            abilityImage = UIFactory.CreateImageLabel({})
             abilityImage.Name = "AbilityImage"
             abilityImage.Size = UDim2.new(1, 0, 1, 0)
             abilityImage.BackgroundTransparency = 1
@@ -238,7 +243,7 @@ local function setupUI()
         -- Create Cooldown Overlay
         local cooldownOverlay = abilitySlot:FindFirstChild("CooldownOverlay")
         if not cooldownOverlay then
-            cooldownOverlay = Instance.new("Frame")
+            cooldownOverlay = UIFactory.CreateFrame({})
             cooldownOverlay.Name = "CooldownOverlay"
             cooldownOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
             cooldownOverlay.BackgroundTransparency = 0.5
@@ -288,7 +293,7 @@ local function setupUI()
                         -- Fallback to Text
                         abilityImage.Visible = false
                         if not abilityText then
-                            abilityText = Instance.new("TextLabel")
+                            abilityText = UIFactory.CreateTextLabel({})
                             abilityText.Name = "AbilityText"
                             abilityText.Size = UDim2.new(1, 0, 1, 0)
                             abilityText.BackgroundTransparency = 1
@@ -308,7 +313,7 @@ local function setupUI()
         end
 
         -- Track Ability Usage to trigger cooldown UI locally
-        local abilityUseEvent = ReplicatedStorage:WaitForChild("AbilityUseEvent", 5)
+        local abilityUseEvent = NetworkService.GetEvent("AbilityUseEvent")
         local UserInputService = game:GetService("UserInputService")
 
         if abilityUseEvent then
@@ -332,7 +337,7 @@ local function setupUI()
         end
 
         -- Force initial sync request so the UI populates on spawn
-        local abilityRequestEvent = ReplicatedStorage:WaitForChild("AbilityRequestEvent", 5)
+        local abilityRequestEvent = NetworkService.GetEvent("AbilityRequestEvent")
         if abilityRequestEvent then
             abilityRequestEvent:FireServer("RequestSync")
         end
@@ -341,7 +346,7 @@ local function setupUI()
     setupAbilitySlot()
 
     -- Ascultăm UpdateStatsEvent
-    local updateStatsEvent = ReplicatedStorage:WaitForChild("UpdateStatsEvent", 5)
+    local updateStatsEvent = NetworkService.GetEvent("UpdateStatsEvent")
 
     -- Health Bar Logic
     local function updateHealthUI()
@@ -457,7 +462,7 @@ local function setupUI()
                     if itemIcon then itemIcon.Visible = false end
                     if not itemLabel then
                         -- Create fallback TextLabel
-                        itemLabel = Instance.new("TextLabel")
+                        itemLabel = UIFactory.CreateTextLabel({})
                         itemLabel.Name = "FallbackText"
                         itemLabel.Size = UDim2.new(1, 0, 1, 0)
                         itemLabel.BackgroundTransparency = 1
@@ -704,7 +709,7 @@ local function setupUI()
     local afkDelayThread = nil
 
     -- Use WaitForChild instead of creating a fake local instance
-    local toggleAfkEvent = ReplicatedStorage:WaitForChild("ToggleAFKEvent")
+    local toggleAfkEvent = NetworkService.GetEvent("ToggleAFKEvent")
 
     if afkButton then
         -- Find existing notification or create new one
@@ -719,7 +724,7 @@ local function setupUI()
 
         if not afkTextLabel then
             -- Create a brand new TextLabel explicitly to guarantee it ignores all MAINUI constraints
-            afkTextLabel = Instance.new("TextLabel")
+            afkTextLabel = UIFactory.CreateTextLabel({})
             afkTextLabel.Name = "AFKNotificationText"
             afkTextLabel.Parent = screenGui
             afkTextLabel.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -788,7 +793,7 @@ local function setupUI()
         end))
     end
 
-    local updateMatchmakingEvent = ReplicatedStorage:WaitForChild("UpdateMatchmakingUIEvent", 10)
+    local updateMatchmakingEvent = NetworkService.GetEvent("UpdateMatchmakingUIEvent")
     if updateMatchmakingEvent then
         table.insert(activeConnections, updateMatchmakingEvent.OnClientEvent:Connect(function(textMsg, soundId)
             local matchmakingUI = mainUI:FindFirstChild("MatchmakingUI")
@@ -849,7 +854,7 @@ local function setupUI()
         tween:Play()
     end
 
-    local toggleMainUiEvent = ReplicatedStorage:WaitForChild("ToggleMainUIEvent", 10)
+    local toggleMainUiEvent = NetworkService.GetEvent("ToggleMainUIEvent")
     if toggleMainUiEvent then
         table.insert(activeConnections, toggleMainUiEvent.OnClientEvent:Connect(function(isVisible)
             if mainUI and mainUI.Parent then
@@ -907,10 +912,10 @@ local function setupUI()
 
         -- Asigurăm că eventurile există, având timeout mic de la început, pot da silent fail
         if not abilityRequestEvent then
-            abilityRequestEvent = ReplicatedStorage:WaitForChild("AbilityRequestEvent")
+            abilityRequestEvent = NetworkService.GetEvent("AbilityRequestEvent")
         end
         if not abilityStateEvent then
-            abilityStateEvent = ReplicatedStorage:WaitForChild("AbilityStateEvent")
+            abilityStateEvent = NetworkService.GetEvent("AbilityStateEvent")
         end
 
         -- Abilities layout setup
@@ -1220,10 +1225,10 @@ player.CharacterAdded:Connect(function()
 end)
 
 -- Remote Events
-local showCountdown = ReplicatedStorage:WaitForChild("ShowCountdownEvent", 10)
-local showText = ReplicatedStorage:WaitForChild("ShowTextEvent", 10)
-local hideText = ReplicatedStorage:WaitForChild("HideTextEvent", 10)
-local vfxEvent = ReplicatedStorage:WaitForChild("VfxEvent", 10)
+local showCountdown = NetworkService.GetEvent("ShowCountdownEvent")
+local showText = NetworkService.GetEvent("ShowTextEvent")
+local hideText = NetworkService.GetEvent("HideTextEvent")
+local vfxEvent = NetworkService.GetEvent("VfxEvent")
 
 -- Funcție Helper VFX Client
 local function runClientVfx(victimPos, victimColors, groundColor, groundMaterial)
@@ -1370,7 +1375,7 @@ if hideText then
     end)
 end
 
-local updateModifiersUIEvent = ReplicatedStorage:WaitForChild("UpdateModifiersUIEvent", 10)
+local updateModifiersUIEvent = NetworkService.GetEvent("UpdateModifiersUIEvent")
 if updateModifiersUIEvent then
     updateModifiersUIEvent.OnClientEvent:Connect(function(activeMods)
         if #activeMods > 0 then
@@ -1400,7 +1405,7 @@ if hideText then
     end)
 end
 
-local clientModifierEvent = ReplicatedStorage:WaitForChild("ClientModifierEvent", 10)
+local clientModifierEvent = NetworkService.GetEvent("ClientModifierEvent")
 if clientModifierEvent then
     local Lighting = game:GetService("Lighting")
     clientModifierEvent.OnClientEvent:Connect(function(modType, data)
@@ -1446,7 +1451,7 @@ if clientModifierEvent then
     end)
 end
 
-local updateTimerEvent = ReplicatedStorage:WaitForChild("HotPotatoTimerEvent", 10)
+local updateTimerEvent = NetworkService.GetEvent("HotPotatoTimerEvent")
 if updateTimerEvent then
     local activePotatoes = {}
 
@@ -1503,7 +1508,7 @@ if updateTimerEvent then
     end)
 end
 
-local shockwaveEvent = ReplicatedStorage:WaitForChild("ShockwaveVfxEvent", 10)
+local shockwaveEvent = NetworkService.GetEvent("ShockwaveVfxEvent")
 if shockwaveEvent then
     shockwaveEvent.OnClientEvent:Connect(function(blastPos)
         local Workspace = game:GetService("Workspace")

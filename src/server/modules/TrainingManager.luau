@@ -7,7 +7,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 
-local MaceMechanic = require(script.Parent.MaceMechanic)
+local CombatService = require(script.Parent.Parent.services.CombatService)
 
 -- Setări
 local MAX_DUMMIES = 5
@@ -250,8 +250,8 @@ function TrainingManager.removePlayerFromTraining(player)
         playersInTraining[player] = nil
         player:SetAttribute("InTraining", false)
 
-        if MaceMechanic.playerCleanups[player] then
-            MaceMechanic.playerCleanups[player]()
+        if CombatService.playerCleanups[player] then
+            CombatService.playerCleanups[player]()
         end
         print("TrainingManager: " .. player.Name .. " a fost scos din training.")
     end
@@ -316,7 +316,7 @@ function TrainingManager.Start()
                     print("TrainingManager: " .. player.Name .. " a intrat in zona de training.")
 
                     -- Start mechanic (Training mode)
-                    MaceMechanic.startMechanic(player, function()
+                    CombatService.startMechanic(player, function()
                         -- Callback for unexpected end if needed
                     end, true)
                 end
