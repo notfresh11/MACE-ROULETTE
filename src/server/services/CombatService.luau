@@ -113,8 +113,7 @@ end
 
 -- Create or get the RemoteEvent for the MaceAttack
 -- Get the RemoteEvent created by MainGameLoop
-local maceEventName = "MaceAttackEvent"
-local attackEvent = ReplicatedStorage:WaitForChild(maceEventName)
+local attackEvent = NetworkService.GetEvent("MaceAttackEvent")
 local ModifierService = require(script.Parent.Parent.services.ModifierService)
 
 function CombatService.startMechanic(player, onRoundEndCallback, isTraining, allMaceUsers)
