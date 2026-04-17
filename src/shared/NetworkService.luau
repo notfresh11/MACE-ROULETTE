@@ -57,7 +57,25 @@ end
 function NetworkService.GetEvent(eventName)
     local event = remotesFolder:FindFirstChild(eventName)
     if not event then
-        warn(string.format("[CRITICAL WARNING] NetworkService: Event-ul '%s' nu a fost găsit în folderul Remotes la momentul apelului! Verifică dacă NetworkService.Init() a fost apelat și dacă '%s' este în eventsList.", eventName, eventName))
+        warn(string.format("[CRITICAL WARNING] NetworkService: Event-ul '%s' nu a fost pre-instanțiat! Creăm unul pe loc (Lazy Load) pentru a preveni crash-ul.", eventName))
+
+        -- Fallback: Caută tipul dorit în lista hardcodată
+        local eventType = "RemoteEvent"
+        for _, eventData in ipairs(eventsList) do
+            if eventData.Name == eventName then
+                eventType = eventData.Type
+                break
+            end
+        end
+
+        -- Dacă se termină în Function, asigură-te că e RemoteFunction
+        if string.match(eventName, "Function$") then
+            eventType = "RemoteFunction"
+        end
+
+        event = Instance.new(eventType)
+        event.Name = eventName
+        event.Parent = remotesFolder
     end
     return event
 end
