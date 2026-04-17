@@ -1,5 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
+local NetworkService = require(ReplicatedStorage.Shared.utils.NetworkService)
 
 -- Initialize NetworkService immediately to ensure all RemoteEvents/Functions are pre-instantiated in the Remotes folder
 NetworkService.Init()
