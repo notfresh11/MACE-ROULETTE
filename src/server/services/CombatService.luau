@@ -6,8 +6,8 @@ local MathUtils = require(ReplicatedStorage.Shared.utils.MathUtils)
 local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local ProgressionManager = require(script.Parent.ProgressionManager)
-local AntiCheat = require(script.Parent.AntiCheat)
+local ProgressionManager = require(script.Parent.Parent.modules.ProgressionManager)
+local AntiCheat = require(script.Parent.Parent.modules.AntiCheat)
 
 -- Tracking per-player cleanup functions to allow multiple concurrent maces
 CombatService.playerCleanups = {}
