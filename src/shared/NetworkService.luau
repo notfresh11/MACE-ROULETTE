@@ -1,5 +1,6 @@
 local NetworkService = {}
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
 if not remotesFolder then
@@ -57,25 +58,33 @@ end
 function NetworkService.GetEvent(eventName)
     local event = remotesFolder:FindFirstChild(eventName)
     if not event then
-        warn(string.format("[CRITICAL WARNING] NetworkService: Event-ul '%s' nu a fost pre-instanțiat! Creăm unul pe loc (Lazy Load) pentru a preveni crash-ul.", eventName))
-
-        -- Fallback: Caută tipul dorit în lista hardcodată
-        local eventType = "RemoteEvent"
-        for _, eventData in ipairs(eventsList) do
-            if eventData.Name == eventName then
-                eventType = eventData.Type
-                break
+        if RunService:IsClient() then
+            -- Pe client, asteptam ca serverul sa creeze si sa replice event-ul
+            event = remotesFolder:WaitForChild(eventName, 15)
+            if not event then
+                warn(string.format("[CRITICAL WARNING] NetworkService Client: Event-ul '%s' nu a fost gasit in folderul Remotes in timp util!", eventName))
             end
-        end
+        else
+            warn(string.format("[CRITICAL WARNING] NetworkService Server: Event-ul '%s' nu a fost pre-instanțiat! Creăm unul pe loc (Lazy Load) pentru a preveni crash-ul.", eventName))
 
-        -- Dacă se termină în Function, asigură-te că e RemoteFunction
-        if string.match(eventName, "Function$") then
-            eventType = "RemoteFunction"
-        end
+            -- Fallback: Caută tipul dorit în lista hardcodată
+            local eventType = "RemoteEvent"
+            for _, eventData in ipairs(eventsList) do
+                if eventData.Name == eventName then
+                    eventType = eventData.Type
+                    break
+                end
+            end
 
-        event = Instance.new(eventType)
-        event.Name = eventName
-        event.Parent = remotesFolder
+            -- Dacă se termină în Function, asigură-te că e RemoteFunction
+            if string.match(eventName, "Function$") then
+                eventType = "RemoteFunction"
+            end
+
+            event = Instance.new(eventType)
+            event.Name = eventName
+            event.Parent = remotesFolder
+        end
     end
     return event
 end
