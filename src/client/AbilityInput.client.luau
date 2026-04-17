@@ -1,12 +1,13 @@
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
 
-local abilityUseEvent = ReplicatedStorage:WaitForChild("AbilityUseEvent", 10)
+local abilityUseEvent = NetworkService.GetEvent("AbilityUseEvent")
 
-local dashVelocityEvent = ReplicatedStorage:WaitForChild("DashVelocityEvent", 10)
+local dashVelocityEvent = NetworkService.GetEvent("DashVelocityEvent")
 
 if abilityUseEvent then
     UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)

@@ -4,6 +4,7 @@ local Workspace = game:GetService("Workspace")
 
 local MIN_PLAYERS = 2
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 local AntiCheat = require(script.Parent.AntiCheat)
 
 local function getActivePlayers()
@@ -20,7 +21,7 @@ Matchmaking.getActivePlayers = getActivePlayers
 function Matchmaking.waitForPlayers()
     print("Matchmaking: Așteptăm minim " .. MIN_PLAYERS .. " jucători activi...")
 
-    local updateMatchmakingUIEvent = ReplicatedStorage:WaitForChild("UpdateMatchmakingUIEvent")
+    local updateMatchmakingUIEvent = NetworkService.GetEvent("UpdateMatchmakingUIEvent")
 
     while true do
         local currentActive = #getActivePlayers()

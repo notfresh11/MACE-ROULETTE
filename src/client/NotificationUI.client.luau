@@ -1,12 +1,13 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-local notificationReceivedEvent = ReplicatedStorage:WaitForChild("NotificationReceivedEvent")
-local notificationAnswerEvent = ReplicatedStorage:WaitForChild("NotificationAnswerEvent")
+local notificationReceivedEvent = NetworkService.GetEvent("NotificationReceivedEvent")
+local notificationAnswerEvent = NetworkService.GetEvent("NotificationAnswerEvent")
 
 local notificationQueue = {}
 local isProcessingQueue = false

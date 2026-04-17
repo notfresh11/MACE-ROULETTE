@@ -1,11 +1,14 @@
-local ModifierManager = {}
+local ModifierService = {}
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
-local MapManager = require(script.Parent.MapManager)
+local MapManager = require(script.Parent.Parent.modules.MapManager)
+local VisualModifiers = require(script.Parent.modifiers.VisualModifiers)
+local MovementModifiers = require(script.Parent.modifiers.MovementModifiers)
 
 local activeModifiers = {}
 local savedModifiers = nil
@@ -14,50 +17,20 @@ local modifierConnections = {}
 local originalMapProperties = {}
 local originalLighting = {}
 
-local updateModifiersUIEvent = ReplicatedStorage:FindFirstChild("UpdateModifiersUIEvent")
-if not updateModifiersUIEvent then
-    updateModifiersUIEvent = Instance.new("RemoteEvent")
-    updateModifiersUIEvent.Name = "UpdateModifiersUIEvent"
-    updateModifiersUIEvent.Parent = ReplicatedStorage
-end
+local updateModifiersUIEvent = NetworkService.GetEvent("UpdateModifiersUIEvent")
 
-local clientModifierEvent = ReplicatedStorage:FindFirstChild("ClientModifierEvent")
-if not clientModifierEvent then
-    clientModifierEvent = Instance.new("RemoteEvent")
-    clientModifierEvent.Name = "ClientModifierEvent"
-    clientModifierEvent.Parent = ReplicatedStorage
-end
+local clientModifierEvent = NetworkService.GetEvent("ClientModifierEvent")
 
-local knockbackEvent = ReplicatedStorage:FindFirstChild("KnockbackClickEvent")
-if not knockbackEvent then
-    knockbackEvent = Instance.new("RemoteEvent")
-    knockbackEvent.Name = "KnockbackClickEvent"
-    knockbackEvent.Parent = ReplicatedStorage
-end
+local knockbackEvent = NetworkService.GetEvent("KnockbackClickEvent")
 
-local beachBallThrowEvent = ReplicatedStorage:FindFirstChild("BeachBallThrowEvent")
-if not beachBallThrowEvent then
-    beachBallThrowEvent = Instance.new("RemoteEvent")
-    beachBallThrowEvent.Name = "BeachBallThrowEvent"
-    beachBallThrowEvent.Parent = ReplicatedStorage
-end
+local beachBallThrowEvent = NetworkService.GetEvent("BeachBallThrowEvent")
 
-local hotPotatoTimerEvent = ReplicatedStorage:FindFirstChild("HotPotatoTimerEvent")
-if not hotPotatoTimerEvent then
-    hotPotatoTimerEvent = Instance.new("RemoteEvent")
-    hotPotatoTimerEvent.Name = "HotPotatoTimerEvent"
-    hotPotatoTimerEvent.Parent = ReplicatedStorage
-end
+local hotPotatoTimerEvent = NetworkService.GetEvent("HotPotatoTimerEvent")
 
-local passEvent = ReplicatedStorage:FindFirstChild("HotPotatoPassEvent")
-if not passEvent then
-    passEvent = Instance.new("RemoteEvent")
-    passEvent.Name = "HotPotatoPassEvent"
-    passEvent.Parent = ReplicatedStorage
-end
+local passEvent = NetworkService.GetEvent("HotPotatoPassEvent")
 
 beachBallThrowEvent.OnServerEvent:Connect(function(player, cursorHitPosition)
-    if not ModifierManager.IsModifierActive("Beach Episode") then return end
+    if not ModifierService.IsModifierActive("Beach Episode") then return end
     if typeof(cursorHitPosition) ~= "Vector3" then return end
 
     local char = player.Character
@@ -116,7 +89,7 @@ end)
 
 local lastKnockbacks = {}
 knockbackEvent.OnServerEvent:Connect(function(player)
-    if not ModifierManager.IsModifierActive("KnockBack") then return end
+    if not ModifierService.IsModifierActive("KnockBack") then return end
 
     local now = tick()
     local lastTime = lastKnockbacks[player.UserId] or 0
@@ -181,7 +154,7 @@ knockbackEvent.OnServerEvent:Connect(function(player)
 end)
 
 -- Define all modifiers
-ModifierManager.Modifiers = {
+ModifierService.Modifiers = {
     ["Invisible platform"] = {
         Name = "Invisible platform",
         Apply = function()
@@ -207,7 +180,7 @@ ModifierManager.Modifiers = {
     ["Shadow Assasin"] = {
         Name = "Shadow Assasin",
         Apply = function()
-            -- Shadow Assassin is handled in MaceMechanic, it makes the Mace User transparent to others but they see an outline of themselves
+            -- Shadow Assassin is handled in CombatService, it makes the Mace User transparent to others but they see an outline of themselves
         end,
         Remove = function()
         end
@@ -217,16 +190,16 @@ ModifierManager.Modifiers = {
         Apply = function()
             for _, player in ipairs(Players:GetPlayers()) do
                 if player.Character then
-                    ModifierManager.ApplyGhostToCharacter(player.Character, true, false)
-                    ModifierManager.ApplyOutlineToCharacter(player.Character, true, false)
+                    ModifierService.ApplyGhostToCharacter(player.Character, true, false)
+                    ModifierService.ApplyOutlineToCharacter(player.Character, true, false)
                 end
             end
         end,
         Remove = function()
             for _, player in ipairs(Players:GetPlayers()) do
                 if player.Character then
-                    ModifierManager.ApplyGhostToCharacter(player.Character, false, false)
-                    ModifierManager.ApplyOutlineToCharacter(player.Character, false, false)
+                    ModifierService.ApplyGhostToCharacter(player.Character, false, false)
+                    ModifierService.ApplyOutlineToCharacter(player.Character, false, false)
                 end
             end
         end
@@ -283,7 +256,7 @@ ModifierManager.Modifiers = {
     ["Grow a Player!"] = {
         Name = "Grow a Player!",
         Apply = function()
-            -- Handled via Heartbeat loop in MainGameLoop / ModifierManager
+            -- Handled via Heartbeat loop in MainGameLoop / ModifierService
         end,
         Remove = function()
             -- Reset scales
@@ -336,7 +309,7 @@ ModifierManager.Modifiers = {
             -- Apply outline to everyone
             for _, player in ipairs(Players:GetPlayers()) do
                 if player.Character then
-                    ModifierManager.ApplyOutlineToCharacter(player.Character, true)
+                    ModifierService.ApplyOutlineToCharacter(player.Character, true)
                 end
             end
         end,
@@ -348,7 +321,7 @@ ModifierManager.Modifiers = {
 
             for _, player in ipairs(Players:GetPlayers()) do
                 if player.Character then
-                    ModifierManager.ApplyOutlineToCharacter(player.Character, false)
+                    ModifierService.ApplyOutlineToCharacter(player.Character, false)
                 end
             end
         end
@@ -436,7 +409,7 @@ ModifierManager.Modifiers = {
     },
     ["Shockwave"] = {
         Name = "Shockwave",
-        Apply = function() end, Remove = function() end -- Logic in MaceMechanic
+        Apply = function() end, Remove = function() end -- Logic in CombatService
     },
     ["Streamsnipe"] = {
         Name = "Streamsnipe",
@@ -494,11 +467,11 @@ local Exclusions = {
     {"AdminAbuse", "Nothing Special"}
 }
 
-function ModifierManager.GetActiveModifiers()
+function ModifierService.GetActiveModifiers()
     return activeModifiers
 end
 
-function ModifierManager.IsModifierActive(name)
+function ModifierService.IsModifierActive(name)
     if table.find(activeModifiers, name) then return true end
     if table.find(activeModifiers, "AdminAbuse") then
         if table.find(adminAbuseApplied, name) then
@@ -508,7 +481,7 @@ function ModifierManager.IsModifierActive(name)
     return false
 end
 
-function ModifierManager.ApplyOutlineToCharacter(character, enable, isMaceUser)
+function ModifierService.ApplyOutlineToCharacter(character, enable, isMaceUser)
     local highlight = character:FindFirstChild("GhostHighlight")
     if enable then
         if not highlight then
@@ -530,59 +503,27 @@ function ModifierManager.ApplyOutlineToCharacter(character, enable, isMaceUser)
     end
 end
 
-function ModifierManager.ApplyGhostToCharacter(character, isGhost, isMaceUser)
-    for _, part in ipairs(character:GetDescendants()) do
-        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-            if isGhost then
-                if not part:GetAttribute("OrigTransparency") then
-                    part:SetAttribute("OrigTransparency", part.Transparency)
-                end
-                -- To make the highlight visible, the part transparency must NOT be exactly 1
-                -- 0.99 transparency makes it effectively invisible but still allows Highlight rendering
-                part.Transparency = 0.99
-            else
-                local orig = part:GetAttribute("OrigTransparency")
-                if orig then
-                    part.Transparency = orig
-                    part:SetAttribute("OrigTransparency", nil)
-                end
-            end
-        elseif part:IsA("Decal") then
-            if isGhost then
-                if not part:GetAttribute("OrigTransparency") then
-                    part:SetAttribute("OrigTransparency", part.Transparency)
-                end
-                part.Transparency = 0.99
-            else
-                local orig = part:GetAttribute("OrigTransparency")
-                if orig then
-                    part.Transparency = orig
-                    part:SetAttribute("OrigTransparency", nil)
-                end
-            end
-        end
-    end
-
-    ModifierManager.ApplyOutlineToCharacter(character, isGhost, isMaceUser)
+function ModifierService.ApplyGhostToCharacter(character, isGhost, isMaceUser)
+    VisualModifiers.ApplyGhost(character, isGhost, isMaceUser)
 end
 
-function ModifierManager.ReapplyPlayerStates(player)
+function ModifierService.ReapplyPlayerStates(player)
     if not player or not player.Character then return end
     local char = player.Character
 
     -- Check Ghost Party
-    if ModifierManager.IsModifierActive("Ghost Party") then
-        ModifierManager.ApplyGhostToCharacter(char, true, false)
+    if ModifierService.IsModifierActive("Ghost Party") then
+        ModifierService.ApplyGhostToCharacter(char, true, false)
     else
-        ModifierManager.ApplyGhostToCharacter(char, false, false)
+        ModifierService.ApplyGhostToCharacter(char, false, false)
     end
 
     -- Outline Logic
     local needsOutline = false
     local isRedOutline = false
-    local isImpostor = ModifierManager.IsModifierActive("Impostor")
+    local isImpostor = ModifierService.IsModifierActive("Impostor")
 
-    if ModifierManager.IsModifierActive("I cant see !") then
+    if ModifierService.IsModifierActive("I cant see !") then
         needsOutline = true
     end
 
@@ -591,12 +532,12 @@ function ModifierManager.ReapplyPlayerStates(player)
         isRedOutline = true
     end
 
-    ModifierManager.ApplyOutlineToCharacter(char, needsOutline, isRedOutline)
+    ModifierService.ApplyOutlineToCharacter(char, needsOutline, isRedOutline)
 
     -- Check Super Speed & Jump Power
     local hum = char:FindFirstChild("Humanoid")
     if hum then
-        if ModifierManager.IsModifierActive("Super Speed") then
+        if ModifierService.IsModifierActive("Super Speed") then
             hum.WalkSpeed = 32
             char:SetAttribute("MaxSpeedAllowed", 32)
         else
@@ -614,17 +555,17 @@ function ModifierManager.ReapplyPlayerStates(player)
     end
 end
 
-function ModifierManager.ClearAllModifiers()
+function ModifierService.ClearAllModifiers()
     if #adminAbuseApplied > 0 then
         for _, modName in ipairs(adminAbuseApplied) do
-            local mod = ModifierManager.Modifiers[modName]
+            local mod = ModifierService.Modifiers[modName]
             if mod and mod.Remove then mod.Remove() end
         end
         adminAbuseApplied = {}
     end
 
     for _, modName in ipairs(activeModifiers) do
-        local mod = ModifierManager.Modifiers[modName]
+        local mod = ModifierService.Modifiers[modName]
         if mod and mod.Remove then
             mod.Remove()
         end
@@ -642,13 +583,13 @@ function ModifierManager.ClearAllModifiers()
     updateModifiersUIEvent:FireAllClients({})
 end
 
-function ModifierManager.ClearRoundModifiers()
+function ModifierService.ClearRoundModifiers()
     -- Restore original modifiers if a special override was active
     if savedModifiers then
         if #adminAbuseApplied > 0 then
             -- Remove all forced AdminAbuse modifiers
             for _, modName in ipairs(adminAbuseApplied) do
-                local mod = ModifierManager.Modifiers[modName]
+                local mod = ModifierService.Modifiers[modName]
                 if mod and mod.Remove then mod.Remove() end
             end
             adminAbuseApplied = {}
@@ -656,7 +597,7 @@ function ModifierManager.ClearRoundModifiers()
 
         -- Remove the override modifier (Nothing Special / AdminAbuse)
         for _, modName in ipairs(activeModifiers) do
-            local mod = ModifierManager.Modifiers[modName]
+            local mod = ModifierService.Modifiers[modName]
             if mod and mod.IsRoundModifier and mod.Remove then
                 mod.Remove()
             end
@@ -666,7 +607,7 @@ function ModifierManager.ClearRoundModifiers()
         activeModifiers = {}
         for _, modName in ipairs(savedModifiers) do
             table.insert(activeModifiers, modName)
-            local mod = ModifierManager.Modifiers[modName]
+            local mod = ModifierService.Modifiers[modName]
             if mod and mod.Apply then
                 mod.Apply()
             end
@@ -675,7 +616,7 @@ function ModifierManager.ClearRoundModifiers()
     else
         local newActiveModifiers = {}
         for _, modName in ipairs(activeModifiers) do
-            local mod = ModifierManager.Modifiers[modName]
+            local mod = ModifierService.Modifiers[modName]
             if mod and mod.IsRoundModifier then
                 if mod.Remove then
                     mod.Remove()
@@ -690,10 +631,10 @@ function ModifierManager.ClearRoundModifiers()
     updateModifiersUIEvent:FireAllClients(activeModifiers)
 end
 
-function ModifierManager.PickAndAddModifier(activePlayerCount)
+function ModifierService.PickAndAddModifier(activePlayerCount)
     local available = {}
 
-    for modName, _ in pairs(ModifierManager.Modifiers) do
+    for modName, _ in pairs(ModifierService.Modifiers) do
         local canAdd = true
         if table.find(activeModifiers, modName) then
             canAdd = false
@@ -738,7 +679,7 @@ function ModifierManager.PickAndAddModifier(activePlayerCount)
 
             -- Remove current ones
             for _, m in ipairs(activeModifiers) do
-                local oldMod = ModifierManager.Modifiers[m]
+                local oldMod = ModifierService.Modifiers[m]
                 if oldMod and oldMod.Remove then oldMod.Remove() end
             end
             activeModifiers = {chosen}
@@ -753,7 +694,7 @@ function ModifierManager.PickAndAddModifier(activePlayerCount)
 
             -- Shuffle modifier list to give fair random chances
             local keys = {}
-            for mName in pairs(ModifierManager.Modifiers) do
+            for mName in pairs(ModifierService.Modifiers) do
                 if mName ~= "AdminAbuse" and mName ~= "Nothing Special" then
                     table.insert(keys, mName)
                 end
@@ -765,7 +706,7 @@ function ModifierManager.PickAndAddModifier(activePlayerCount)
             end
 
             for _, mName in ipairs(keys) do
-                local mDef = ModifierManager.Modifiers[mName]
+                local mDef = ModifierService.Modifiers[mName]
 
                 -- Check if it can be added without violating exclusions
                 local canAdd = true
@@ -816,14 +757,14 @@ function ModifierManager.PickAndAddModifier(activePlayerCount)
         end
 
         for _, modName in ipairs(conflictingModsToRemove) do
-            local oldMod = ModifierManager.Modifiers[modName]
+            local oldMod = ModifierService.Modifiers[modName]
             if oldMod and oldMod.Remove then oldMod.Remove() end
         end
 
         activeModifiers = newActiveModifiers
         table.insert(activeModifiers, chosen)
 
-        local mod = ModifierManager.Modifiers[chosen]
+        local mod = ModifierService.Modifiers[chosen]
         if mod and mod.Apply then
             mod.Apply()
         end
@@ -836,10 +777,10 @@ end
 
 local lavaDamageTicks = {}
 
-function ModifierManager.UpdateDynamicModifiers(activePlayers, maceUsers)
-    local growActive = ModifierManager.IsModifierActive("Grow a Player!")
-    local shrinkActive = ModifierManager.IsModifierActive("The Player isnt Growing...")
-    local floorIsLava = ModifierManager.IsModifierActive("The Floor is Lava")
+function ModifierService.UpdateDynamicModifiers(activePlayers, maceUsers)
+    local growActive = ModifierService.IsModifierActive("Grow a Player!")
+    local shrinkActive = ModifierService.IsModifierActive("The Player isnt Growing...")
+    local floorIsLava = ModifierService.IsModifierActive("The Floor is Lava")
 
     local now = tick()
 
@@ -900,4 +841,4 @@ function ModifierManager.UpdateDynamicModifiers(activePlayers, maceUsers)
     end
 end
 
-return ModifierManager
+return ModifierService

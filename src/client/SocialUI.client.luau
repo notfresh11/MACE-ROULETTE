@@ -4,7 +4,9 @@ local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 local playerGui = player:WaitForChild("PlayerGui")
+local UIFactory = require(script.Parent.components.UIFactory)
 
 -- Constants
 local CLICK_SOUND_ID = "rbxassetid://124476359159008"
@@ -106,10 +108,10 @@ local function openMenu(frame)
     tween:Play()
 end
 
-local partyUpdateEvent = ReplicatedStorage:WaitForChild("PartyUpdateEvent")
-local partyActionEvent = ReplicatedStorage:WaitForChild("PartyActionEvent")
-local sendNotificationEvent = ReplicatedStorage:WaitForChild("SendNotificationEvent")
-local fetchFriendsFunction = ReplicatedStorage:WaitForChild("FetchFriendsFunction")
+local partyUpdateEvent = NetworkService.GetEvent("PartyUpdateEvent")
+local partyActionEvent = NetworkService.GetEvent("PartyActionEvent")
+local sendNotificationEvent = NetworkService.GetEvent("SendNotificationEvent")
+local fetchFriendsFunction = NetworkService.GetEvent("FetchFriendsFunction")
 
 local currentPartyData = nil
 

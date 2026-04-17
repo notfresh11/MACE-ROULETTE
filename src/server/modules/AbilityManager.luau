@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NetworkService = require(ReplicatedStorage.Shared.NetworkService)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
@@ -30,33 +31,13 @@ local Abilities = {
 local cooldowns = {}
 
 -- Setup Remote Events
-local abilityRequestEvent = ReplicatedStorage:FindFirstChild("AbilityRequestEvent")
-if not abilityRequestEvent then
-    abilityRequestEvent = Instance.new("RemoteEvent")
-    abilityRequestEvent.Name = "AbilityRequestEvent"
-    abilityRequestEvent.Parent = ReplicatedStorage
-end
+local abilityRequestEvent = NetworkService.GetEvent("AbilityRequestEvent")
 
-local abilityUseEvent = ReplicatedStorage:FindFirstChild("AbilityUseEvent")
-if not abilityUseEvent then
-    abilityUseEvent = Instance.new("RemoteEvent")
-    abilityUseEvent.Name = "AbilityUseEvent"
-    abilityUseEvent.Parent = ReplicatedStorage
-end
+local abilityUseEvent = NetworkService.GetEvent("AbilityUseEvent")
 
-local abilityStateEvent = ReplicatedStorage:FindFirstChild("AbilityStateEvent")
-if not abilityStateEvent then
-    abilityStateEvent = Instance.new("RemoteEvent")
-    abilityStateEvent.Name = "AbilityStateEvent"
-    abilityStateEvent.Parent = ReplicatedStorage
-end
+local abilityStateEvent = NetworkService.GetEvent("AbilityStateEvent")
 
-local dashVelocityEvent = ReplicatedStorage:FindFirstChild("DashVelocityEvent")
-if not dashVelocityEvent then
-    dashVelocityEvent = Instance.new("RemoteEvent")
-    dashVelocityEvent.Name = "DashVelocityEvent"
-    dashVelocityEvent.Parent = ReplicatedStorage
-end
+local dashVelocityEvent = NetworkService.GetEvent("DashVelocityEvent")
 
 -- Move AbilityIcon folder from ServerStorage to ReplicatedStorage if it exists
 local ServerStorage = game:GetService("ServerStorage")
