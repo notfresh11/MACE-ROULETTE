@@ -13,7 +13,6 @@ local eventsList = {
     {Name = "AbilityRequestEvent", Type = "RemoteEvent"},
     {Name = "AbilityStateEvent", Type = "RemoteEvent"},
     {Name = "AbilityUseEvent", Type = "RemoteEvent"},
-    {Name = "BeachBallThrowEvent", Type = "RemoteEvent"},
     {Name = "ClientModifierEvent", Type = "RemoteEvent"},
     {Name = "DashVelocityEvent", Type = "RemoteEvent"},
     {Name = "FetchFriendsFunction", Type = "RemoteFunction"},

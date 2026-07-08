@@ -6,11 +6,12 @@ local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 
 -- Disable Default Hotbar
+-- Enable Default Hotbar
 task.spawn(function()
     local success, err
     repeat
         success, err = pcall(function()
-            StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+            StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
         end)
         if not success then task.wait(0.1) end
     until success
@@ -654,7 +655,24 @@ local function setupUI()
         refreshInventory()
     end
 
-    setupInventoryTracking()
+    -- setupInventoryTracking() -- Dezactivăm logica vechiului hotbar (Alpha State: folosim backpack-ul Roblox)
+
+    -- Ascundem vizual sloturile vechiului hotbar, dar păstrăm Health/XP/Ability
+    local inGameGui = playerGui:FindFirstChild("INGAME")
+    if inGameGui then
+        local matchGui = inGameGui:FindFirstChild("MATCH")
+        if matchGui then
+            local hotbarGui = matchGui:FindFirstChild("Hotbar")
+            if hotbarGui then
+                local slot1 = hotbarGui:FindFirstChild("Slot1")
+                local slot2 = hotbarGui:FindFirstChild("Slot2")
+                local slot3 = hotbarGui:FindFirstChild("Slot3")
+                if slot1 then slot1.Visible = false end
+                if slot2 then slot2.Visible = false end
+                if slot3 then slot3.Visible = false end
+            end
+        end
+    end
 
     if updateStatsEvent then
         table.insert(activeConnections, updateStatsEvent.OnClientEvent:Connect(function(level, currentXp, requiredXp, coins)
