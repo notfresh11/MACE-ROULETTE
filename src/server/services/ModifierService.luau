@@ -23,69 +23,9 @@ local clientModifierEvent = NetworkService.GetEvent("ClientModifierEvent")
 
 local knockbackEvent = NetworkService.GetEvent("KnockbackClickEvent")
 
-local beachBallThrowEvent = NetworkService.GetEvent("BeachBallThrowEvent")
-
 local hotPotatoTimerEvent = NetworkService.GetEvent("HotPotatoTimerEvent")
 
 local passEvent = NetworkService.GetEvent("HotPotatoPassEvent")
-
-beachBallThrowEvent.OnServerEvent:Connect(function(player, cursorHitPosition)
-    if not ModifierService.IsModifierActive("Beach Episode") then return end
-    if typeof(cursorHitPosition) ~= "Vector3" then return end
-
-    local char = player.Character
-    if not char then return end
-
-    local tool = char:FindFirstChild("BeachBall")
-    if not tool then return end
-
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-
-    -- Destroy tool right away
-    tool:Destroy()
-
-    local dirToHit = (cursorHitPosition - root.Position).Unit
-    local forwardDir = root.CFrame.LookVector
-    -- Jucătorul trebuie să stea cu fața la punctul unde vrea să arunce
-    if forwardDir:Dot(dirToHit) < 0.5 then
-        return -- nu e orientat cu fața spre cursor
-    end
-
-    -- Spawn projectile visually (optional, we'll just check hits on a ray or distance)
-    local hitDist = 50 -- range of ball throw
-    local pushForce = 120
-
-    local closestTarget = nil
-    local closestDist = hitDist
-
-    for _, otherPlayer in ipairs(Players:GetPlayers()) do
-        if otherPlayer ~= player and otherPlayer.Character then
-            local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if otherRoot then
-                local dist = (otherRoot.Position - root.Position).Magnitude
-                if dist <= hitDist then
-                    local dirToTarget = (otherRoot.Position - root.Position).Unit
-                    local dotToTarget = dirToHit:Dot(dirToTarget)
-                    -- Trebuie să fie pe traiectoria mingii (aproximativ)
-                    if dotToTarget > 0.9 then
-                        if dist < closestDist then
-                            closestDist = dist
-                            closestTarget = otherRoot
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    if closestTarget then
-        local flatDir = Vector3.new(dirToHit.X, 0, dirToHit.Z).Unit
-        if flatDir.Magnitude ~= flatDir.Magnitude then flatDir = Vector3.new(1,0,0) end
-
-        closestTarget.AssemblyLinearVelocity = flatDir * pushForce + Vector3.new(0, 50, 0)
-    end
-end)
 
 local lastKnockbacks = {}
 knockbackEvent.OnServerEvent:Connect(function(player)
@@ -427,10 +367,6 @@ ModifierService.Modifiers = {
     },
     ["The Floor is Lava"] = {
         Name = "The Floor is Lava",
-        Apply = function() end, Remove = function() end
-    },
-    ["Beach Episode"] = {
-        Name = "Beach Episode",
         Apply = function() end, Remove = function() end
     },
     ["Nothing Special"] = {
