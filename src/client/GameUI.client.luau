@@ -674,6 +674,34 @@ local function setupUI()
         end
     end
 
+    local updateMatchInfoEvent = NetworkService.GetEvent("UpdateMatchInfoEvent")
+    if updateMatchInfoEvent then
+        table.insert(activeConnections, updateMatchInfoEvent.OnClientEvent:Connect(function(data)
+            local inGameGui = playerGui:FindFirstChild("INGAME")
+            if not inGameGui then return end
+            local matchGui = inGameGui:FindFirstChild("MATCH")
+            if not matchGui then return end
+            local matchInfo = matchGui:FindFirstChild("MatchInfo")
+            if not matchInfo then return end
+
+            -- Visibility check
+            matchInfo.Visible = player:GetAttribute("InMatch") == true
+
+            local lastWinner = matchInfo:FindFirstChild("LastWinner")
+            local matchLbl = matchInfo:FindFirstChild("MATCH")
+            local maceHolder = matchInfo:FindFirstChild("MaceHolder")
+            local modifierList = matchInfo:FindFirstChild("ModifierList")
+            local playersAlive = matchInfo:FindFirstChild("PlayersAlive")
+            local rounds = matchInfo:FindFirstChild("Rounds")
+
+            if lastWinner then lastWinner.Text = data.LastWinner ~= "" and ("LAST WINNER: " .. data.LastWinner) or "" end
+            if maceHolder then maceHolder.Text = data.MaceHolder ~= "" and ("MACE HOLDER: " .. data.MaceHolder) or "" end
+            if modifierList then modifierList.Text = data.ModifierList ~= "" and ("CURRENT MODIFIERS: " .. data.ModifierList) or "" end
+            if playersAlive then playersAlive.Text = data.PlayersAlive > 0 and ("PLAYERS ALIVE: " .. tostring(data.PlayersAlive)) or "" end
+            if rounds then rounds.Text = data.Rounds > 0 and ("ROUNDS: " .. tostring(data.Rounds)) or "" end
+        end))
+    end
+
     if updateStatsEvent then
         table.insert(activeConnections, updateStatsEvent.OnClientEvent:Connect(function(level, currentXp, requiredXp, coins)
             -- Noul sistem XP
@@ -882,6 +910,18 @@ local function setupUI()
             -- Când intrăm în meci, ascundem conținutul (Visible = false) din ecranele secundare
             if not isVisible then
                 hideAllMenus()
+            end
+
+            -- Ensure MatchInfo visibility is also updated when main UI toggles
+            local inGameGui = playerGui:FindFirstChild("INGAME")
+            if inGameGui then
+                local matchGui = inGameGui:FindFirstChild("MATCH")
+                if matchGui then
+                    local matchInfo = matchGui:FindFirstChild("MatchInfo")
+                    if matchInfo then
+                        matchInfo.Visible = player:GetAttribute("InMatch") == true
+                    end
+                end
             end
         end))
     end

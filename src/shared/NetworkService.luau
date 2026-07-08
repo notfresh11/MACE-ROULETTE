@@ -31,6 +31,7 @@ local eventsList = {
     {Name = "ToggleAFKEvent", Type = "RemoteEvent"},
     {Name = "ToggleMainUIEvent", Type = "RemoteEvent"},
     {Name = "UpdateMatchmakingUIEvent", Type = "RemoteEvent"},
+    {Name = "UpdateMatchInfoEvent", Type = "RemoteEvent"},
     {Name = "UpdateModifiersUIEvent", Type = "RemoteEvent"},
     {Name = "UpdateStatsEvent", Type = "RemoteEvent"},
     {Name = "VfxEvent", Type = "RemoteEvent"},

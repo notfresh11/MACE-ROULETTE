@@ -38,6 +38,8 @@ print("[MAINLOOP] Requiring AbilityManager...")
 local AbilityManager = require(script.Parent.modules.AbilityManager)
 print("[MAINLOOP] Requiring TrainingManager...")
 local TrainingManager = require(script.Parent.modules.TrainingManager)
+print("[MAINLOOP] Requiring MatchInfoManager...")
+local MatchInfoManager = require(script.Parent.modules.MatchInfoManager)
 print("[MAINLOOP] Requiring ModifierService...")
 local ModifierService = require(script.Parent.services.ModifierService)
 print("[MAINLOOP] Requiring PartyManager...")
@@ -157,6 +159,9 @@ local function gameLoop()
             local activePlayers = Matchmaking.getActivePlayers()
             print("MainLoop: Meciul a început cu " .. #activePlayers .. " jucători!")
 
+            MatchInfoManager.ResetMatch()
+            MatchInfoManager.SetData("PlayersAlive", #activePlayers)
+
             ModifierService.ClearAllModifiers()
             ModifierService.PickAndAddModifier(#activePlayers)
 
@@ -192,7 +197,13 @@ local function gameLoop()
 
             -- Bucla de Runde (cât timp sunt cel puțin 2 supraviețuitori în meci)
             local isFirstRound = true
+            local currentRoundNumber = 0
             while #activePlayers > 1 do
+                currentRoundNumber = currentRoundNumber + 1
+                MatchInfoManager.SetData("Rounds", currentRoundNumber)
+                MatchInfoManager.SetData("PlayersAlive", #activePlayers)
+                MatchInfoManager.SetData("MaceHolder", "SELECTING...")
+
                 print("MainLoop: Începem o NOUĂ RUNDĂ cu " .. #activePlayers .. " supraviețuitori.")
 
                 if not isFirstRound then
@@ -336,6 +347,10 @@ local function gameLoop()
                 local chosenPlayers = Roulette.selectMaceBearers(activePlayers, numMaces)
 
                 if #chosenPlayers > 0 then
+                    local maceNames = {}
+                    for _, p in ipairs(chosenPlayers) do table.insert(maceNames, p.Name) end
+                    MatchInfoManager.SetData("MaceHolder", table.concat(maceNames, ", "))
+
                     local targetAnimPlayers = chosenPlayers
                     if isStreamsnipe then
                         local nonMaceUser = nil
@@ -413,6 +428,8 @@ local function gameLoop()
                                         print("MainLoop: A player died during SuddenDeath. Round ends.")
                                         roundEnded = true
                                     end
+
+                                    MatchInfoManager.SetData("PlayersAlive", #activePlayers)
                                 end
                             end))
                         end
@@ -490,6 +507,9 @@ local function gameLoop()
                     local winner = activePlayers[1]
                     winner:SetAttribute("InMatch", false)
                     print("MainLoop: MECIUL S-A TERMINAT! Câștigătorul este: " .. winner.Name)
+
+                    MatchInfoManager.SetData("LastWinner", winner.Name)
+                    MatchInfoManager.SetData("PlayersAlive", 1)
 
                     -- Match Win Rewards
                     ProgressionManager.ProcessMatchWin(winner)
