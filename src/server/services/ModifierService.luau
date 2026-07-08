@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 local MapManager = require(script.Parent.Parent.modules.MapManager)
 local VisualModifiers = require(script.Parent.modifiers.VisualModifiers)
 local MovementModifiers = require(script.Parent.modifiers.MovementModifiers)
+local MatchInfoManager = require(script.Parent.Parent.modules.MatchInfoManager)
 
 local activeModifiers = {}
 local savedModifiers = nil
@@ -492,6 +493,7 @@ function ModifierService.ReapplyPlayerStates(player)
 end
 
 function ModifierService.ClearAllModifiers()
+    MatchInfoManager.SetData("ModifierList", "NONE")
     if #adminAbuseApplied > 0 then
         for _, modName in ipairs(adminAbuseApplied) do
             local mod = ModifierService.Modifiers[modName]
@@ -565,6 +567,7 @@ function ModifierService.ClearRoundModifiers()
     end
 
     updateModifiersUIEvent:FireAllClients(activeModifiers)
+    MatchInfoManager.SetData("ModifierList", #activeModifiers > 0 and table.concat(activeModifiers, ", ") or "NONE")
 end
 
 function ModifierService.PickAndAddModifier(activePlayerCount)
@@ -670,6 +673,7 @@ function ModifierService.PickAndAddModifier(activePlayerCount)
             end
 
             updateModifiersUIEvent:FireAllClients(activeModifiers)
+    MatchInfoManager.SetData("ModifierList", #activeModifiers > 0 and table.concat(activeModifiers, ", ") or "NONE")
             return chosen
         end
 
@@ -706,6 +710,7 @@ function ModifierService.PickAndAddModifier(activePlayerCount)
         end
 
         updateModifiersUIEvent:FireAllClients(activeModifiers)
+        MatchInfoManager.SetData("ModifierList", #activeModifiers > 0 and table.concat(activeModifiers, ", ") or "NONE")
         return chosen
     end
     return nil
