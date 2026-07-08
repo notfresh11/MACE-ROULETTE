@@ -18,7 +18,7 @@ humanoid.StateChanged:Connect(function(oldState, newState)
     if newState == Enum.HumanoidStateType.Freefall then
         -- Check if mace is equipped
         local tool = character:FindFirstChildOfClass("Tool")
-        if tool and tool.Name ~= "BeachBall" and tool.Name ~= "HotPotatoTool" then
+        if tool and tool.Name ~= "HotPotatoTool" then
             if maceFallTrack and not maceFallTrack.IsPlaying then
                 maceFallTrack:Play()
             end
@@ -32,7 +32,7 @@ end)
 
 -- Also check when equipping tool while in air
 character.ChildAdded:Connect(function(child)
-    if child:IsA("Tool") and child.Name ~= "BeachBall" and child.Name ~= "HotPotatoTool" then
+    if child:IsA("Tool") and child.Name ~= "HotPotatoTool" then
         if humanoid:GetState() == Enum.HumanoidStateType.Freefall then
             if maceFallTrack and not maceFallTrack.IsPlaying then
                 maceFallTrack:Play()
@@ -42,7 +42,7 @@ character.ChildAdded:Connect(function(child)
 end)
 
 character.ChildRemoved:Connect(function(child)
-    if child:IsA("Tool") and child.Name ~= "BeachBall" and child.Name ~= "HotPotatoTool" then
+    if child:IsA("Tool") and child.Name ~= "HotPotatoTool" then
         if maceFallTrack and maceFallTrack.IsPlaying then
             maceFallTrack:Stop()
         end

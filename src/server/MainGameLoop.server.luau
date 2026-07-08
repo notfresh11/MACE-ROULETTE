@@ -426,23 +426,6 @@ local function gameLoop()
                         end
                     end
 
-                    if ModifierService.IsModifierActive("Beach Episode") then
-                        local ServerStorage = game:GetService("ServerStorage")
-                        local beachBallFolder = ServerStorage:FindFirstChild("BeachBall")
-                        if beachBallFolder then
-                            local ballTool = beachBallFolder:FindFirstChild("BeachBall") or beachBallFolder:FindFirstChild("Tool")
-                            if ballTool then
-                                for _, player in ipairs(activePlayers) do
-                                    if not table.find(chosenPlayers, player) then
-                                        local clone = ballTool:Clone()
-                                        clone.Name = "BeachBall"
-                                        clone.Parent = player.Backpack
-                                    end
-                                end
-                            end
-                        end
-                    end
-
                     local heartbeatConn
                     heartbeatConn = RunService.Heartbeat:Connect(function()
                         ModifierService.UpdateDynamicModifiers(activePlayers, chosenPlayers)
@@ -470,15 +453,6 @@ local function gameLoop()
                         conn:Disconnect()
                     end
                     table.clear(deathConnections)
-
-                    for _, p in ipairs(activePlayers) do
-                        local tool = p.Backpack:FindFirstChild("BeachBall")
-                        if tool then tool:Destroy() end
-                        if p.Character then
-                            local charTool = p.Character:FindFirstChild("BeachBall")
-                            if charTool then charTool:Destroy() end
-                        end
-                    end
 
                     print("MainLoop: Runda s-a încheiat. Așteptăm cooldown 5 secunde...")
                     task.wait(5)
