@@ -472,6 +472,7 @@ local function gameLoop()
                     table.clear(deathConnections)
 
                     print("MainLoop: Runda s-a încheiat. Așteptăm cooldown 5 secunde...")
+                    MatchInfoManager.SetData("MaceHolder", "")
                     task.wait(5)
                 else
                     warn("MainLoop: Nu s-a putut alege un jucător!")

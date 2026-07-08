@@ -19,27 +19,46 @@ local function getSurfaceGui()
     if not wholeMap then return nil end
     local spawnPlatform = wholeMap:FindFirstChild("SpawnPlatform")
     if not spawnPlatform then return nil end
+
+    -- Recursive search starting from SpawnPlatform to be more robust against minor hierarchy changes
+    local frame = spawnPlatform:FindFirstChild("Frame", true)
+    if frame then
+        return frame:FindFirstChildWhichIsA("SurfaceGui", true)
+    end
+
+    -- Fallback to the explicit path if recursive fails or finds the wrong thing
     local info = spawnPlatform:FindFirstChild("Info")
-    if not info then return nil end
-    local frame = info:FindFirstChild("Frame")
-    if not frame then return nil end
-    local infoInner = frame:FindFirstChild("Info")
-    if not infoInner then return nil end
-    return infoInner:FindFirstChildWhichIsA("SurfaceGui")
+    if info then
+        local framePart = info:FindFirstChild("Frame")
+        if framePart then
+            local infoInner = framePart:FindFirstChild("Info")
+            if infoInner then
+                return infoInner:FindFirstChildWhichIsA("SurfaceGui")
+            end
+        end
+    end
+
+    return nil
 end
 
 function MatchInfoManager.UpdateSurfaceUI()
     local sGui = getSurfaceGui()
     if not sGui then return end
 
-    local roundLbl = sGui:FindFirstChild("Round")
-    local staticRound = sGui:FindFirstChild("StaticRounds")
+    local roundLbl = sGui:FindFirstChild("Round", true)
+    local staticRound = sGui:FindFirstChild("StaticRounds", true)
 
-    local playersLbl = sGui:FindFirstChild("PlayersRemaining")
-    local staticPlayers = sGui:FindFirstChild("StaticPlayersRemaining")
+    local playersLbl = sGui:FindFirstChild("PlayersRemaining", true)
+    local staticPlayers = sGui:FindFirstChild("StaticPlayersRemaining", true)
 
-    local modifiersLbl = sGui:FindFirstChild("ModifiersList")
-    local staticModifiers = sGui:FindFirstChild("StaticModifiers")
+    local modifiersLbl = sGui:FindFirstChild("ModifiersList", true)
+    local staticModifiers = sGui:FindFirstChild("StaticModifiers", true)
+
+    local maceLbl = sGui:FindFirstChild("MaceHolder", true)
+    local staticMace = sGui:FindFirstChild("StaticMace", true)
+
+    local winnerLbl = sGui:FindFirstChild("LastWinner", true)
+    local staticWinner = sGui:FindFirstChild("StaticWinner", true)
 
     local hasRounds = currentMatchData.Rounds > 0
     if roundLbl then roundLbl.Text = hasRounds and tostring(currentMatchData.Rounds) or "" end
@@ -52,6 +71,14 @@ function MatchInfoManager.UpdateSurfaceUI()
     local hasModifiers = currentMatchData.ModifierList ~= ""
     if modifiersLbl then modifiersLbl.Text = hasModifiers and currentMatchData.ModifierList or "" end
     if staticModifiers then staticModifiers.Visible = hasModifiers end
+
+    local hasMace = currentMatchData.MaceHolder ~= ""
+    if maceLbl then maceLbl.Text = hasMace and currentMatchData.MaceHolder or "" end
+    if staticMace then staticMace.Visible = hasMace end
+
+    local hasWinner = currentMatchData.LastWinner ~= ""
+    if winnerLbl then winnerLbl.Text = hasWinner and currentMatchData.LastWinner or "" end
+    if staticWinner then staticWinner.Visible = hasWinner end
 end
 
 function MatchInfoManager.SyncToClients(targetPlayers)
@@ -60,12 +87,8 @@ function MatchInfoManager.SyncToClients(targetPlayers)
             updateMatchInfoEvent:FireClient(plr, currentMatchData)
         end
     else
-        -- Only fire to players IN MATCH for the ScreenGui
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr:GetAttribute("InMatch") then
-                updateMatchInfoEvent:FireClient(plr, currentMatchData)
-            end
-        end
+        -- Fire to everyone so those who are eliminated can hide their HUD immediately
+        updateMatchInfoEvent:FireAllClients(currentMatchData)
     end
 end
 

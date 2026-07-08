@@ -662,6 +662,12 @@ local function setupUI()
     if inGameGui then
         local matchGui = inGameGui:FindFirstChild("MATCH")
         if matchGui then
+            -- Hide MatchInfo by default in lobby
+            local matchInfo = matchGui:FindFirstChild("MatchInfo")
+            if matchInfo then
+                matchInfo.Visible = false
+            end
+
             local hotbarGui = matchGui:FindFirstChild("Hotbar")
             if hotbarGui then
                 local slot1 = hotbarGui:FindFirstChild("Slot1")
@@ -676,7 +682,7 @@ local function setupUI()
 
     local updateMatchInfoEvent = NetworkService.GetEvent("UpdateMatchInfoEvent")
     if updateMatchInfoEvent then
-        table.insert(activeConnections, updateMatchInfoEvent.OnClientEvent:Connect(function(data)
+        local function updateHUD(data)
             local inGameGui = playerGui:FindFirstChild("INGAME")
             if not inGameGui then return end
             local matchGui = inGameGui:FindFirstChild("MATCH")
@@ -684,22 +690,34 @@ local function setupUI()
             local matchInfo = matchGui:FindFirstChild("MatchInfo")
             if not matchInfo then return end
 
-            -- Visibility check
-            matchInfo.Visible = player:GetAttribute("InMatch") == true
+            -- Visibility check: must be in a match and NOT in the lobby (MainUI closed)
+            local isInMatch = player:GetAttribute("InMatch") == true
+            matchInfo.Visible = isInMatch
 
-            local lastWinner = matchInfo:FindFirstChild("LastWinner")
-            local matchLbl = matchInfo:FindFirstChild("MATCH")
-            local maceHolder = matchInfo:FindFirstChild("MaceHolder")
-            local modifierList = matchInfo:FindFirstChild("ModifierList")
-            local playersAlive = matchInfo:FindFirstChild("PlayersAlive")
-            local rounds = matchInfo:FindFirstChild("Rounds")
+            if data then
+                local lastWinner = matchInfo:FindFirstChild("LastWinner")
+                local maceHolder = matchInfo:FindFirstChild("MaceHolder")
+                local modifierList = matchInfo:FindFirstChild("ModifierList")
+                local playersAlive = matchInfo:FindFirstChild("PlayersAlive")
+                local rounds = matchInfo:FindFirstChild("Rounds")
 
-            if lastWinner then lastWinner.Text = data.LastWinner ~= "" and ("LAST WINNER: " .. data.LastWinner) or "" end
-            if maceHolder then maceHolder.Text = data.MaceHolder ~= "" and ("MACE HOLDER: " .. data.MaceHolder) or "" end
-            if modifierList then modifierList.Text = data.ModifierList ~= "" and ("CURRENT MODIFIERS: " .. data.ModifierList) or "" end
-            if playersAlive then playersAlive.Text = data.PlayersAlive > 0 and ("PLAYERS ALIVE: " .. tostring(data.PlayersAlive)) or "" end
-            if rounds then rounds.Text = data.Rounds > 0 and ("ROUNDS: " .. tostring(data.Rounds)) or "" end
+                if lastWinner then lastWinner.Text = data.LastWinner ~= "" and ("LAST WINNER: " .. data.LastWinner) or "" end
+                if maceHolder then maceHolder.Text = data.MaceHolder ~= "" and ("MACE HOLDER: " .. data.MaceHolder) or "" end
+                if modifierList then modifierList.Text = data.ModifierList ~= "" and ("CURRENT MODIFIERS: " .. data.ModifierList) or "" end
+                if playersAlive then playersAlive.Text = data.PlayersAlive > 0 and ("PLAYERS ALIVE: " .. tostring(data.PlayersAlive)) or "" end
+                if rounds then rounds.Text = data.Rounds > 0 and ("ROUNDS: " .. tostring(data.Rounds)) or "" end
+            end
+        end
+
+        table.insert(activeConnections, updateMatchInfoEvent.OnClientEvent:Connect(updateHUD))
+
+        -- Listen for attribute changes to toggle visibility immediately
+        table.insert(activeConnections, player:GetAttributeChangedSignal("InMatch"):Connect(function()
+            updateHUD()
         end))
+
+        -- Initial call
+        updateHUD()
     end
 
     if updateStatsEvent then
